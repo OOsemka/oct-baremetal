@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oct-baremetal
+  namespace: oct-baremetal
+  labels:
+    app: oct-baremetal
+    app.kubernetes.io/part-of: oct-baremetal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oct-baremetal
+  template:
+    metadata:
+      labels:
+        app: oct-baremetal
+    spec:
+      containers:
+        - name: plugin
+          image: quay.io/cjanisze/oct-baremetal:4.22
+          ports:
+            - containerPort: 9443
+              protocol: TCP
+          volumeMounts:
+            - name: plugin-serving-cert
+              readOnly: true
+              mountPath: /var/serving-cert
+          resources:
+            requests:
+              cpu: 10m
+              memory: 50Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: plugin-serving-cert
+          secret:
+            secretName: plugin-serving-cert
+            defaultMode: 420
+      restartPolicy: Always

@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: image-cache
+  namespace: oct-baremetal
+  labels:
+    app: discovery-service
+    app.kubernetes.io/part-of: oct-baremetal
+  annotations:
+    description: >-
+      Shared cache for bare-metal OS images served over HTTP. Sized for
+      2-3 raw disk images. Resize with: oc edit pvc image-cache -n
+      oct-baremetal (storage class must support expansion).
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: odf-storagecluster-ceph-fast-pool-rbd
+  resources:
+    requests:
+      storage: 100Gi

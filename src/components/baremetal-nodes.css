@@ -1,0 +1,143 @@
+/* Namespace selector bar — minimal layout, inherits PF theme colors */
+.bmh-namespace-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm, 8px);
+  padding: var(--pf-t--global--spacer--sm, 8px) var(--pf-t--global--spacer--lg, 24px);
+}
+
+.bmh-namespace-label {
+  font-weight: var(--pf-t--global--font--weight--body--bold, 700);
+}
+
+/* Status text — inline icon + label, matching native console look */
+.bmh-status-text {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--xs, 4px);
+}
+
+.bmh-status--success {
+  color: var(--pf-t--global--color--status--success--default, #3e8635);
+}
+
+.bmh-status--info {
+  color: var(--pf-t--global--color--status--info--default, #2b9af3);
+}
+
+.bmh-status--danger {
+  color: var(--pf-t--global--color--status--danger--default, #c9190b);
+}
+
+.bmh-status--unknown {
+  color: var(--pf-t--global--text--color--subtle, #6a6e73);
+}
+
+/* Vendor info text below host name */
+.bmh-vendor-text {
+  color: var(--pf-t--global--text--color--subtle, #6a6e73);
+  font-size: var(--pf-t--global--font--size--xs, 0.75rem);
+  margin-top: 2px;
+}
+
+/* Error messages in table rows */
+.bmh-error-msg {
+  color: var(--pf-t--global--color--status--danger--default, #c9190b);
+  font-size: var(--pf-t--global--font--size--sm, 0.875rem);
+  margin-top: var(--pf-t--global--spacer--xs, 4px);
+}
+
+/* Deploy page: golden-image tiles (CNV / software-catalog card feel) */
+.bmh-os-tile.pf-v6-c-card,
+.bmh-os-tile {
+  height: 100%;
+  background-color: var(--pf-t--global--background--color--primary--default, #fff);
+  color: var(--pf-t--global--text--color--regular, inherit);
+  border: var(--pf-t--global--border--width--regular, 1px) solid
+    var(--pf-t--global--border--color--default, #d2d2d2);
+  box-shadow: none;
+}
+
+.bmh-os-tile.pf-m-selected {
+  border-color: var(--pf-t--global--border--color--clicked, #0066cc);
+  box-shadow: inset 0 0 0 var(--pf-t--global--border--width--extra-strong, 2px)
+    var(--pf-t--global--border--color--clicked, #0066cc);
+}
+
+.bmh-os-tile-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--pf-t--global--spacer--sm, 8px);
+  width: 100%;
+}
+
+.bmh-os-tile-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  border-radius: var(--pf-t--global--border--radius--small, 8px);
+  background-color: var(--pf-t--global--background--color--secondary--default, #f0f0f0);
+  color: var(--pf-t--global--icon--color--regular, inherit);
+}
+
+.bmh-os-tile-logo svg {
+  width: 1.75rem;
+  height: 1.75rem;
+  display: block;
+}
+
+.bmh-os-tile-subtitle {
+  margin-top: var(--pf-t--global--spacer--xs, 4px);
+  color: var(--pf-t--global--text--color--subtle, #6a6e73);
+  font-size: var(--pf-t--global--font--size--sm, 0.875rem);
+}
+
+/* Deploy page: DataSource name in image cards */
+.bmh-ds-name {
+  word-break: break-all;
+}
+
+.bmh-ds-source-url {
+  margin-top: var(--pf-t--global--spacer--xs, 4px);
+}
+
+.bmh-ds-info-icon {
+  margin-left: var(--pf-t--global--spacer--xs, 4px);
+  color: var(--pf-t--global--color--status--info--default, #2b9af3);
+  cursor: help;
+}
+
+.bmh-ds-resolved-url {
+  margin-top: var(--pf-t--global--spacer--xs, 4px);
+  color: var(--pf-t--global--text--color--subtle, #6a6e73);
+  word-break: break-all;
+}
+
+/* Deploy page actions */
+.bmh-deploy-actions {
+  padding-top: var(--pf-t--global--spacer--sm, 8px);
+}
+
+/* Deploy page user config form spacing */
+.bmh-deploy-user-form {
+  padding-top: var(--pf-t--global--spacer--md, 16px);
+}
+
+/* Compact preparation section */
+.bmh-deploy-prep-section {
+  margin-top: 0;
+}
+
+.bmh-deploy-prep-section .pf-v6-c-alert {
+  margin-bottom: 0;
+}
+
+/* Download progress bytes text */
+.bmh-deploy-progress-bytes {
+  font-size: var(--pf-t--global--font--size--sm, 0.875rem);
+  color: var(--pf-t--global--text--color--subtle, #6a6e73);
+}

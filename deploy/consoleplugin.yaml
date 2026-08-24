@@ -1,0 +1,28 @@
+apiVersion: console.openshift.io/v1
+kind: ConsolePlugin
+metadata:
+  name: oct-baremetal
+spec:
+  displayName: Bare Metal Hosts (Community Tools)
+  backend:
+    type: Service
+    service:
+      name: oct-baremetal
+      namespace: oct-baremetal
+      port: 9443
+      basePath: /
+  proxy:
+    - alias: bmh-proxy
+      endpoint:
+        type: Service
+        service:
+          name: oct-baremetal
+          namespace: oct-baremetal
+          port: 9443
+    - alias: discovery-service
+      endpoint:
+        type: Service
+        service:
+          name: discovery-service
+          namespace: oct-baremetal
+          port: 8443

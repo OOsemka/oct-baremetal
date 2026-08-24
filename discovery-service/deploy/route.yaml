@@ -1,0 +1,16 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: image-cache
+  namespace: oct-baremetal
+  labels:
+    app: discovery-service
+    app.kubernetes.io/part-of: oct-baremetal
+spec:
+  to:
+    kind: Service
+    name: discovery-service
+    weight: 100
+  port:
+    targetPort: http
+  wildcardPolicy: None

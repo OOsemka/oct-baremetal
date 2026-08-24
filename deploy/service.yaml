@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: oct-baremetal
+  namespace: oct-baremetal
+  labels:
+    app: oct-baremetal
+    app.kubernetes.io/part-of: oct-baremetal
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: plugin-serving-cert
+spec:
+  ports:
+    - name: 9443-tcp
+      protocol: TCP
+      port: 9443
+      targetPort: 9443
+  selector:
+    app: oct-baremetal
+  type: ClusterIP

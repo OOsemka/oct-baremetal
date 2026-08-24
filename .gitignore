@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.yarn/cache/
+.yarn/install-state.gz
+.pnp.cjs
+.pnp.loader.mjs
+*.tgz
+.DS_Store
+discovery-service/discovery-service

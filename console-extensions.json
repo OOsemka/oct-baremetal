@@ -1,0 +1,26 @@
+[
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/baremetal/nodes",
+      "component": { "$codeRef": "BaremetalNodesPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/baremetal/nodes/deploy/:ns/:name",
+      "component": { "$codeRef": "DeployPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/baremetal/nodes/register",
+      "component": { "$codeRef": "RegisterWizardPage" }
+    }
+  }
+]
