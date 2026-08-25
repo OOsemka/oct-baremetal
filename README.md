@@ -20,6 +20,22 @@ Validated on OpenShift **4.22** (PatternFly 6).
 
 Open from **Community Tools → Compute** after the storefront and this plugin are enabled.
 
+## Install (image cache)
+
+Storefront **Add** applies `catalog/deploy/oct-baremetal.yaml`, which **precreates** PVC `image-cache` (100Gi) before `discovery-service` so the pod can schedule. Omit `storageClassName` to use the cluster default StorageClass; the Add dialog can pick another class.
+
+Documented `oc apply` (cluster-admin; do not apply unless asked):
+
+```bash
+oc apply -f discovery-service/deploy/image-cache-pvc.yaml
+oc apply -f discovery-service/deploy/route.yaml
+oc apply -f discovery-service/deploy/rbac.yaml
+oc apply -f discovery-service/deploy/service.yaml
+oc apply -f discovery-service/deploy/deployment.yaml
+```
+
+A missing `image-cache` PVC leaves discovery-service Pending; the console proxy then returns **502 Bad Gateway** on image prepare/cache.
+
 ## Build
 
 ```bash

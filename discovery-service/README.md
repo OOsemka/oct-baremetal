@@ -71,8 +71,13 @@ podman push quay.io/cjanisze/oct-baremetal-discovery:1.1.0-ocp4.22
 ## Deploy to OpenShift
 
 ```bash
+# PVC first so discovery-service can schedule. Omit storageClassName in the
+# manifest to use the cluster default; set spec.storageClassName at create
+# if you need a specific class (immutable after Bound).
+oc apply -f deploy/image-cache-pvc.yaml
 oc apply -f deploy/rbac.yaml
 oc apply -f deploy/service.yaml
+oc apply -f deploy/route.yaml
 oc apply -f deploy/deployment.yaml
 ```
 
