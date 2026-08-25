@@ -18,7 +18,6 @@ import {
   GalleryItem,
   Card,
   CardBody,
-  CardHeader,
   CardTitle,
   FormGroup,
   Form,
@@ -43,7 +42,6 @@ import {
   BreadcrumbItem,
   FormHelperText,
   Switch,
-  Tooltip,
   Progress,
   ProgressSize,
   ProgressMeasureLocation,
@@ -52,7 +50,6 @@ import {
   CubesIcon,
   ServerIcon,
   NetworkIcon,
-  InfoCircleIcon,
   DownloadIcon,
 } from '@patternfly/react-icons';
 import React, { useState, useMemo, useEffect, useCallback, useRef, FC } from 'react';
@@ -71,7 +68,8 @@ import {
   getSystemVendorInfo,
 } from '../utils/k8s-resources';
 
-import { detectOsFamily, OsIcon } from './os-icons';
+import OsImageTile from './OsImageTile';
+import CommunityDisclaimer from './CommunityDisclaimer';
 import dashboardLogger from '../utils/logger';
 import { nmstateToKeyfiles } from '../utils/nmstate-to-keyfiles';
 import {
@@ -87,6 +85,7 @@ const DISCOVERY_SERVICE_URL = '/api/proxy/plugin/oct-baremetal/discovery-service
 
 type ImageCacheStatus = {
   name: string;
+  dataSourceName?: string;
   phase: 'queued' | 'exporting' | 'downloading' | 'ready' | 'error';
   downloadUrl?: string;
   checksumUrl?: string;
@@ -98,6 +97,29 @@ type ImageCacheStatus = {
   totalBytes?: number;
   statusMessage?: string;
   error?: string;
+};
+
+type ImageCacheListResponse = {
+  images?: ImageCacheStatus[];
+};
+
+const readyCacheNameSet = (images: ImageCacheStatus[] | undefined): Set<string> => {
+  const names = new Set<string>();
+  if (!images) {
+    return names;
+  }
+  for (const img of images) {
+    if (img.phase !== 'ready') {
+      continue;
+    }
+    if (img.name) {
+      names.add(img.name);
+    }
+    if (img.dataSourceName) {
+      names.add(img.dataSourceName);
+    }
+  }
+  return names;
 };
 
 const SOURCE_URL_ANNOTATIONS = [
@@ -162,31 +184,6 @@ function parsePathParams(): { ns: string; name: string } {
   return { ns: '', name: '' };
 }
 
-const getImageDisplayName = (ds: DataSourceKind): string => {
-  const name = ds.metadata.name;
-  return name
-    .replace(/-\d+$/, '')
-    .replace(/-/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-};
-
-type ImageSourceKind = 'http' | 'registry' | 'pvc' | 'cached';
-
-const sourceBadge = (
-  kind: ImageSourceKind,
-): { label: string; color: 'green' | 'orange' | 'grey' | 'blue' } => {
-  switch (kind) {
-    case 'cached':
-      return { label: 'Cached', color: 'blue' };
-    case 'registry':
-      return { label: 'Registry', color: 'orange' };
-    case 'http':
-      return { label: 'HTTP', color: 'green' };
-    default:
-      return { label: 'PVC', color: 'grey' };
-  }
-};
-
 const DeployPage: FC = () => {
   const { t } = useTranslation('plugin__oct-baremetal');
   const { ns, name } = useMemo(() => parsePathParams(), []);
@@ -204,6 +201,8 @@ const DeployPage: FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [reuseNetworkConfig, setReuseNetworkConfig] = useState(false);
   const [cacheStatus, setCacheStatus] = useState<ImageCacheStatus | null>(null);
+  const [cachedImageNames, setCachedImageNames] = useState<Set<string>>(() => new Set());
+  const [osImagesExpanded, setOsImagesExpanded] = useState(true);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [bmhList, bmhLoaded, bmhError] = useK8sWatchResource<K8sResourceCommon[]>({
@@ -389,6 +388,48 @@ const DeployPage: FC = () => {
 
   // Clean up poller on unmount
   useEffect(() => stopPolling, [stopPolling]);
+
+  const rememberReadyCache = useCallback((status: ImageCacheStatus) => {
+    if (status.phase !== 'ready') {
+      return;
+    }
+    setCachedImageNames((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const n of [status.name, status.dataSourceName]) {
+        if (n && !next.has(n)) {
+          next.add(n);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    consoleFetchJSON(`${DISCOVERY_SERVICE_URL}/api/v1/image-cache/list`)
+      .then((resp: ImageCacheListResponse) => {
+        if (cancelled) {
+          return;
+        }
+        const names = readyCacheNameSet(resp?.images);
+        setCachedImageNames(names);
+        dashboardLogger.info('DEPLOY', 'Image cache list loaded', `${names.size} ready`);
+      })
+      .catch(() => {
+        /* cache list is best-effort for tile badges */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (cacheStatus) {
+      rememberReadyCache(cacheStatus);
+    }
+  }, [cacheStatus, rememberReadyCache]);
 
   const pollCacheStatus = useCallback((imageName: string) => {
     stopPolling();
@@ -823,6 +864,9 @@ const DeployPage: FC = () => {
 
       <PageSection>
         <Stack hasGutter>
+          <StackItem>
+            <CommunityDisclaimer />
+          </StackItem>
           {error && (
             <StackItem>
               <Alert variant="danger" title={t('Deployment error')} isInline>
@@ -1022,6 +1066,8 @@ const DeployPage: FC = () => {
                   <StackItem>
                     <ExpandableSection
                       toggleText={t('Available OS images from OpenShift Virtualization')}
+                      isExpanded={osImagesExpanded}
+                      onToggle={(_event, expanded) => setOsImagesExpanded(expanded)}
                     >
                       <Stack hasGutter>
                         <StackItem>
@@ -1039,69 +1085,27 @@ const DeployPage: FC = () => {
                               {t('No ready DataSource images found in')} {VIRTUALIZATION_OS_IMAGES_NS}.
                             </Alert>
                           ) : (
-                            <Gallery hasGutter minWidths={{ default: '220px' }}>
-                              {images.map((ds) => {
-                                const tileId = `bmh-os-tile-${ds.metadata.name}`;
-                                const titleId = `${tileId}-title`;
-                                const displayName = getImageDisplayName(ds);
-                                const osFamily = detectOsFamily(ds);
-                                const isCardSelected = selectedImage === ds.metadata.name;
-                                const resolved = getResolvedImageUrl(ds);
-                                const isCached = cacheStatus?.name === ds.metadata.name && cacheStatus.phase === 'ready';
-                                const sourceKind: ImageSourceKind = isCached
-                                  ? 'cached'
-                                  : resolved
-                                    ? resolved.type === 'registry'
-                                      ? 'registry'
-                                      : 'http'
-                                    : 'pvc';
-                                const badge = sourceBadge(sourceKind);
-                                return (
-                                  <GalleryItem key={ds.metadata.name}>
-                                    <Card
-                                      id={tileId}
-                                      className="bmh-os-tile"
-                                      isClickable
-                                      isSelectable
-                                      isSelected={isCardSelected}
-                                      isFullHeight
-                                    >
-                                      <CardHeader
-                                        selectableActions={{
-                                          selectableActionId: `${tileId}-input`,
-                                          selectableActionAriaLabelledby: titleId,
-                                          name: 'bmh-os-image',
-                                          isHidden: true,
-                                          onChange: () => handleImageCardClick(ds),
-                                        }}
-                                      >
-                                        <div className="bmh-os-tile-header">
-                                          <OsIcon family={osFamily} />
-                                          <Label isCompact color={badge.color}>
-                                            {badge.label}
-                                          </Label>
-                                        </div>
-                                      </CardHeader>
-                                      <CardTitle id={titleId}>{displayName}</CardTitle>
-                                      <CardBody>
-                                        <code className="bmh-ds-name">{ds.metadata.name}</code>
-                                        {resolved?.type === 'registry' && !isCached && (
-                                          <div className="bmh-ds-source-url">
-                                            <Tooltip content={t('This image is sourced from a container registry ({{url}}). Click to select it, then use "Prepare image" to cache it for bare metal deployment.', { url: resolved.url })}>
-                                              <InfoCircleIcon className="bmh-ds-info-icon" />
-                                            </Tooltip>
-                                          </div>
-                                        )}
-                                        {resolved?.type === 'http' && (
-                                          <div className="bmh-ds-resolved-url">
-                                            <small>{resolved.url.length > 60 ? `${resolved.url.substring(0, 60)}...` : resolved.url}</small>
-                                          </div>
-                                        )}
-                                      </CardBody>
-                                    </Card>
-                                  </GalleryItem>
-                                );
-                              })}
+                            <Gallery
+                              hasGutter
+                              minWidths={{ default: '220px' }}
+                              role="group"
+                              aria-label={t('Available OS images from OpenShift Virtualization')}
+                            >
+                              {images.map((ds) => (
+                                <GalleryItem key={ds.metadata.name}>
+                                  <OsImageTile
+                                    ds={ds}
+                                    isSelected={selectedImage === ds.metadata.name}
+                                    isCached={
+                                      cachedImageNames.has(ds.metadata.name) ||
+                                      (cacheStatus?.name === ds.metadata.name &&
+                                        cacheStatus.phase === 'ready')
+                                    }
+                                    resolved={getResolvedImageUrl(ds)}
+                                    onSelect={() => handleImageCardClick(ds)}
+                                  />
+                                </GalleryItem>
+                              ))}
                             </Gallery>
                           )}
                         </StackItem>

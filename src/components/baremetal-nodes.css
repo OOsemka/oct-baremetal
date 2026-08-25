@@ -50,7 +50,9 @@
 /* Deploy page: golden-image tiles (CNV / software-catalog card feel) */
 .bmh-os-tile.pf-v6-c-card,
 .bmh-os-tile {
+  position: relative;
   height: 100%;
+  overflow: visible;
   background-color: var(--pf-t--global--background--color--primary--default, #fff);
   color: var(--pf-t--global--text--color--regular, inherit);
   border: var(--pf-t--global--border--width--regular, 1px) solid
@@ -64,12 +66,50 @@
     var(--pf-t--global--border--color--clicked, #0066cc);
 }
 
+.bmh-os-tile:hover:not(.pf-m-selected) {
+  border-color: var(--pf-t--global--border--color--hover, #0066cc);
+}
+
+/* Native hit target: PF isClickable+isSelectable overlays are clipped / unset in Console. */
+.bmh-os-tile-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+}
+
+.bmh-os-tile-hit:focus {
+  outline: none;
+}
+
+.bmh-os-tile-hit:focus-visible {
+  outline: var(--pf-t--global--border--width--extra-strong, 2px) solid
+    var(--pf-t--global--border--color--clicked, #0066cc);
+  outline-offset: -2px;
+}
+
 .bmh-os-tile-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--pf-t--global--spacer--sm, 8px);
   width: 100%;
+}
+
+.bmh-os-tile-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: var(--pf-t--global--spacer--xs, 4px);
 }
 
 .bmh-os-tile-logo {
@@ -106,9 +146,23 @@
 }
 
 .bmh-ds-info-icon {
+  position: relative;
+  z-index: 2;
   margin-left: var(--pf-t--global--spacer--xs, 4px);
   color: var(--pf-t--global--color--status--info--default, #2b9af3);
   cursor: help;
+}
+
+.bmh-os-tile > .pf-v6-c-card__header,
+.bmh-os-tile > .pf-v6-c-card__title,
+.bmh-os-tile > .pf-v6-c-card__body {
+  pointer-events: none;
+}
+
+.bmh-os-tile .bmh-ds-source-url {
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
 }
 
 .bmh-ds-resolved-url {
