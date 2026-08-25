@@ -64,8 +64,8 @@ curl -X POST http://localhost:8080/api/v1/discover \
 ## Container Build
 
 ```bash
-podman build -t quay.io/cjanisze/discovery-service:latest -f Containerfile .
-podman push quay.io/cjanisze/discovery-service:latest
+podman build -t quay.io/cjanisze/oct-baremetal-discovery:1.1.0-ocp4.22 -f Containerfile .
+podman push quay.io/cjanisze/oct-baremetal-discovery:1.1.0-ocp4.22
 ```
 
 ## Deploy to OpenShift

@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: plugin
-          image: quay.io/cjanisze/oct-baremetal:1.1.0
+          image: quay.io/cjanisze/oct-baremetal:1.1.0-ocp4.22
           ports:
             - containerPort: 9443
               protocol: TCP
