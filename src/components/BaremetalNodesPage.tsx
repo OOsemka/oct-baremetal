@@ -5,6 +5,7 @@ import {
   DocumentTitle,
   k8sPatch,
   k8sDelete,
+  k8sGet,
 } from '@openshift-console/dynamic-plugin-sdk';
 import { useTranslation } from 'react-i18next';
 import {
@@ -56,6 +57,11 @@ import React, { useState, useMemo, useCallback, useEffect, FC } from 'react';
 import {
   BareMetalHostModel,
   BareMetalHostKind,
+  NodeModel,
+  NodeKind,
+  NodeNetworkStateModel,
+  NodeNetworkStateKind,
+  SecretModel,
   getProvisioningState,
   isPoweredOn,
   getHardwareSummary,
@@ -63,6 +69,12 @@ import {
   isAvailableForProvisioning,
   isProvisioned,
 } from '../utils/k8s-resources';
+import {
+  RoutableIp,
+  decodeNmstateSecretData,
+  networkDataRefKey,
+  resolveBareMetalHostRoutableIp,
+} from '../utils/routable-ip';
 
 import dashboardLogger from '../utils/logger';
 import CommunityDisclaimer from './CommunityDisclaimer';
@@ -89,6 +101,27 @@ const FILTER_OPTIONS: { value: FilterCategory; label: string }[] = [
   { value: 'status', label: 'Status' },
   { value: 'bmc-address', label: 'BMC Address' },
 ];
+
+const HostIpCell: FC<{ info: RoutableIp | null }> = ({ info }) => {
+  const { t } = useTranslation('plugin__oct-baremetal');
+  if (!info) {
+    return <span className="bmh-host-ip-empty">—</span>;
+  }
+  const isFallback = info.source === 'node-internal-ip';
+  const title = isFallback
+    ? t('Node InternalIP (not confirmed as the default-route address)')
+    : info.interface
+      ? t('Default route on {{interface}}', { interface: info.interface })
+      : t('Default-route address');
+  return (
+    <span
+      className={isFallback ? 'bmh-host-ip bmh-host-ip--fallback' : 'bmh-host-ip'}
+      title={title}
+    >
+      {info.ip}
+    </span>
+  );
+};
 
 const BaremetalNodesPage: FC = () => {
   const { t } = useTranslation('plugin__oct-baremetal');
@@ -122,10 +155,105 @@ const BaremetalNodesPage: FC = () => {
     namespaced: false,
   });
 
+  const [nnsList, nnsLoaded] = useK8sWatchResource<K8sResourceCommon[]>({
+    groupVersionKind: {
+      group: NodeNetworkStateModel.apiGroup,
+      version: NodeNetworkStateModel.apiVersion,
+      kind: NodeNetworkStateModel.kind,
+    },
+    isList: true,
+    namespaced: false,
+  });
+
+  const [nodeList, nodesLoaded] = useK8sWatchResource<K8sResourceCommon[]>({
+    groupVersionKind: {
+      group: NodeModel.apiGroup || '',
+      version: NodeModel.apiVersion,
+      kind: NodeModel.kind,
+    },
+    isList: true,
+    namespaced: false,
+  });
+
   const hosts = useMemo(
     () => (bmhList as BareMetalHostKind[]) || [],
     [bmhList],
   );
+
+  const nodeNetworkStates = useMemo(
+    () => ((nnsLoaded && nnsList) ? (nnsList as NodeNetworkStateKind[]) : []),
+    [nnsList, nnsLoaded],
+  );
+
+  const nodes = useMemo(
+    () => ((nodesLoaded && nodeList) ? (nodeList as NodeKind[]) : []),
+    [nodeList, nodesLoaded],
+  );
+
+  const [networkDataByRef, setNetworkDataByRef] = useState<Record<string, string | null>>({});
+
+  const networkDataRefsKey = useMemo(() => {
+    const keys = hosts
+      .filter((bmh) => isProvisioned(bmh) && bmh.spec.networkData?.name)
+      .map((bmh) =>
+        networkDataRefKey(
+          bmh.spec.networkData!.namespace || bmh.metadata.namespace,
+          bmh.spec.networkData!.name,
+        ),
+      );
+    return Array.from(new Set(keys)).sort().join(',');
+  }, [hosts]);
+
+  useEffect(() => {
+    if (!networkDataRefsKey) {
+      setNetworkDataByRef({});
+      return;
+    }
+    let cancelled = false;
+    const refs = networkDataRefsKey.split(',').map((key) => {
+      const slash = key.indexOf('/');
+      return { key, namespace: key.slice(0, slash), name: key.slice(slash + 1) };
+    });
+    Promise.all(
+      refs.map(async ({ key, namespace, name }) => {
+        try {
+          const secret = await k8sGet({
+            model: SecretModel,
+            name,
+            ns: namespace,
+          }) as K8sResourceCommon & { data?: Record<string, string> };
+          return [key, decodeNmstateSecretData(secret?.data)] as const;
+        } catch {
+          return [key, null] as const;
+        }
+      }),
+    ).then((entries) => {
+      if (!cancelled) {
+        setNetworkDataByRef(Object.fromEntries(entries));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [networkDataRefsKey]);
+
+  const ipByHost = useMemo(() => {
+    const map = new Map<string, RoutableIp | null>();
+    for (const bmh of hosts) {
+      const key = bmh.metadata.uid || `${bmh.metadata.namespace}/${bmh.metadata.name}`;
+      map.set(
+        key,
+        resolveBareMetalHostRoutableIp({
+          bmh,
+          nnsList: nodeNetworkStates,
+          nodes,
+          networkDataByRef,
+          nnsLoaded,
+        }),
+      );
+    }
+    return map;
+  }, [hosts, nodeNetworkStates, nodes, networkDataByRef, nnsLoaded]);
 
   const namespaces = useMemo(
     () => Array.from(new Set(hosts.map((bmh) => bmh.metadata.namespace))).sort(),
@@ -463,6 +591,7 @@ const BaremetalNodesPage: FC = () => {
             <Thead>
               <Tr>
                 <Th>{t('Name')}</Th>
+                <Th>{t('IP')}</Th>
                 <Th className="pf-m-hidden pf-m-visible-on-sm">{t('Namespace')}</Th>
                 <Th className="pf-m-hidden pf-m-visible-on-sm">{t('Status')}</Th>
                 <Th className="pf-m-hidden pf-m-visible-on-md">{t('Power')}</Th>
@@ -476,11 +605,16 @@ const BaremetalNodesPage: FC = () => {
                 const state = getProvisioningState(bmh);
                 const powered = isPoweredOn(bmh);
                 const statusConfig = STATUS_ICON_CONFIG[state] || STATUS_ICON_CONFIG.unknown;
+                const rowKey = bmh.metadata.uid || `${bmh.metadata.namespace}/${bmh.metadata.name}`;
+                const ipInfo = ipByHost.get(rowKey) || null;
                 return (
-                  <Tr key={bmh.metadata.uid || `${bmh.metadata.namespace}/${bmh.metadata.name}`}>
+                  <Tr key={rowKey}>
                     <Td dataLabel={t('Name')}>
                       <span>{bmh.metadata.name}</span>
                       <div className="bmh-vendor-text">{getSystemVendorInfo(bmh)}</div>
+                    </Td>
+                    <Td dataLabel={t('IP')}>
+                      <HostIpCell info={ipInfo} />
                     </Td>
                     <Td dataLabel={t('Namespace')} className="pf-m-hidden pf-m-visible-on-sm">
                       {bmh.metadata.namespace}

@@ -40,6 +40,20 @@
   margin-top: 2px;
 }
 
+.bmh-host-ip {
+  font-family: var(--pf-t--global--font--family--mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--pf-t--global--font--size--sm, 0.875rem);
+  white-space: nowrap;
+}
+
+.bmh-host-ip--fallback {
+  color: var(--pf-t--global--text--color--subtle, #6a6e73);
+}
+
+.bmh-host-ip-empty {
+  color: var(--pf-t--global--text--color--subtle, #6a6e73);
+}
+
 /* Error messages in table rows */
 .bmh-error-msg {
   color: var(--pf-t--global--color--status--danger--default, #c9190b);

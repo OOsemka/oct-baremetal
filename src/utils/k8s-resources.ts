@@ -124,6 +124,12 @@ export type BareMetalHostSpec = {
     namespace: string;
   };
   preprovisioningNetworkDataName?: string;
+  consumerRef?: {
+    apiVersion?: string;
+    kind?: string;
+    name?: string;
+    namespace?: string;
+  };
 };
 
 export type BareMetalHostStatus = {
@@ -303,3 +309,32 @@ export function isAvailableForProvisioning(bmh: BareMetalHostKind): boolean {
 export function isProvisioned(bmh: BareMetalHostKind): boolean {
   return getProvisioningState(bmh) === 'provisioned';
 }
+
+export type NodeKind = {
+  apiVersion?: string;
+  kind?: string;
+  metadata: {
+    name: string;
+    uid?: string;
+    labels?: Record<string, string>;
+    annotations?: Record<string, string>;
+  };
+  status?: {
+    addresses?: Array<{
+      type?: string;
+      address?: string;
+    }>;
+  };
+};
+
+export type NodeNetworkStateKind = {
+  apiVersion?: string;
+  kind?: string;
+  metadata: {
+    name: string;
+    uid?: string;
+  };
+  status?: {
+    currentState?: unknown;
+  };
+};
