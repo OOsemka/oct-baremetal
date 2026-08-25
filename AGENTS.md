@@ -9,7 +9,7 @@ This repository is the **Bare Metal Hosts** ConsolePlugin: inventory, register, 
 | | Value |
 | --- | --- |
 | Plugin ID / ConsolePlugin / `package.json` `consolePlugin.name` | **`oct-baremetal`** |
-| Image | `quay.io/<org>/oct-baremetal:<ocp-minor>` (e.g. `:4.22`) |
+| Image | `quay.io/<org>/oct-baremetal:1.1.0` (semver; optional `:1.1.0-ocp4.22` or `:4.22`) |
 | i18n | `plugin__oct-baremetal` |
 | Proxy | `/api/proxy/plugin/oct-baremetal/discovery-service` |
 
@@ -66,7 +66,11 @@ Do **not** change unless you are deliberately migrating a live cluster:
 
 ## Catalog tile
 
-Storefront `catalog/community.yaml`: `metadata.name: oct-baremetal`, `consolePlugin: oct-baremetal`, `spec.versions` with `openshift: "4.22"`.
+Storefront `catalog/community.yaml`: `metadata.name: oct-baremetal`, `consolePlugin: oct-baremetal`, `spec.href: /baremetal/nodes` (must match `console-extensions.json`), `spec.versions[]` with semver + `openshift` and a **public image tag that exists**.
+
+## Add must go Ready
+
+Storefront **Add** can succeed (Namespace, ConsolePlugin, `spec.plugins`) while the plugin never becomes Ready. **Open** then 404s (no bundle; typical ImagePullBackOff / unpublished catalog tag). Follow **oct-storefront** `docs/extension-standard.md`: publish the **semver** tag the catalog lists (`:1.1.0`, not only `:4.22`); keep images public (no pull secret); include every required PVC/volume/RBAC/Service in the storefront bundle Add applies (this plugin needs `image-cache`). Confirm the plugin Deployment is Running before calling Add done.
 
 ## Verify
 
