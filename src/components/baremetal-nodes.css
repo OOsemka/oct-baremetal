@@ -61,6 +61,10 @@
   margin-top: var(--pf-t--global--spacer--xs, 4px);
 }
 
+.bmh-watch-alert {
+  margin-bottom: var(--pf-t--global--spacer--md, 16px);
+}
+
 /* Deploy page: golden-image tiles (CNV / software-catalog card feel) */
 .bmh-os-tile.pf-v6-c-card,
 .bmh-os-tile {

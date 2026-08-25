@@ -72,6 +72,8 @@ Storefront `catalog/community.yaml`: `metadata.name: oct-baremetal`, `consolePlu
 
 Storefront **Add** can succeed (Namespace, ConsolePlugin, `spec.plugins`) while the plugin never becomes Ready. **Open** then 404s (no bundle; typical ImagePullBackOff / unpublished catalog tag). Follow **oct-storefront** `docs/extension-standard.md`: publish the **combined** tag the catalog lists (`:1.1.0-ocp4.22`, not only `:4.22` or `:1.1.0`); keep images public (no pull secret); include every required PVC/volume/RBAC/Service in the storefront bundle Add applies. This plugin **must** precreate PVC `image-cache` (100Gi) so `discovery-service` can schedule. Omit `storageClassName` for the cluster default; Add can pick a StorageClass (`communitytools.io/storage-class` or `spec.storageClassName`). Confirm the plugin **and** discovery-service Deployments are Running and `image-cache` is Bound before calling Add done.
 
+Storefront **Add** also checks Metal3 `Provisioning/provisioning-configuration` `spec.watchAllNamespaces` and can patch `true` with the user’s console credentials. Inventory shows a warning if that field is missing/false and any host is outside `openshift-machine-api` (BareMetal Operator then only reconciles `openshift-machine-api`, so those hosts stay Unknown).
+
 ## Verify
 
 ```bash

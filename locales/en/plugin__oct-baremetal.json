@@ -257,5 +257,7 @@
   "This URL is cluster-internal (*.svc). IPA on bare metal cannot resolve it.": "This URL is cluster-internal (*.svc). IPA on bare metal cannot resolve it.",
   "Image is not reachable from bare metal": "Image is not reachable from bare metal",
   "Image URL must start with http:// or https://.": "Image URL must start with http:// or https://.",
-  "Checksum URL is required by Metal3. Provide an http:// or https:// URL to a sha256sum file.": "Checksum URL is required by Metal3. Provide an http:// or https:// URL to a sha256sum file."
+  "Checksum URL is required by Metal3. Provide an http:// or https:// URL to a sha256sum file.": "Checksum URL is required by Metal3. Provide an http:// or https:// URL to a sha256sum file.",
+  "BareMetal Operator is not watching all namespaces": "BareMetal Operator is not watching all namespaces",
+  "BareMetal Operator only reconciles hosts in openshift-machine-api. Hosts in other namespaces stay Unknown until spec.watchAllNamespaces is true, or they live in openshift-machine-api.": "BareMetal Operator only reconciles hosts in openshift-machine-api. Hosts in other namespaces stay Unknown until spec.watchAllNamespaces is true, or they live in openshift-machine-api."
 }

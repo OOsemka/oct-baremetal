@@ -78,6 +78,66 @@ export const NodeNetworkConfigurationPolicyModel: K8sModel = {
   namespaced: false,
 };
 
+/** Cluster-scoped Metal3 Provisioning CR (`provisioning-configuration`). */
+export const ProvisioningModel: K8sModel = {
+  apiVersion: 'v1alpha1',
+  apiGroup: 'metal3.io',
+  kind: 'Provisioning',
+  abbr: 'P',
+  label: 'Provisioning',
+  labelPlural: 'Provisionings',
+  plural: 'provisionings',
+  namespaced: false,
+};
+
+export const MACHINE_API_NS = 'openshift-machine-api';
+
+export type ProvisioningKind = {
+  apiVersion?: string;
+  kind?: string;
+  metadata?: { name?: string };
+  spec?: {
+    watchAllNamespaces?: boolean;
+  };
+};
+
+export function isWatchAllNamespacesEnabled(
+  provisioning?: ProvisioningKind | null,
+): boolean {
+  return provisioning?.spec?.watchAllNamespaces === true;
+}
+
+function isNotFoundError(err: unknown): boolean {
+  if (!err) return false;
+  const status =
+    (err as { status?: number }).status ||
+    (err as { response?: { status?: number } }).response?.status ||
+    (err as { json?: { code?: number } }).json?.code;
+  if (status === 404) return true;
+  const msg =
+    err instanceof Error
+      ? err.message
+      : typeof err === 'string'
+        ? err
+        : (err as { message?: string }).message || String(err);
+  return /not found/i.test(msg);
+}
+
+/** Inventory warning: BMO is not watching all namespaces and some BMHs are outside machine-api. */
+export function shouldWarnBmoNamespaceWatch(args: {
+  loaded: boolean;
+  error?: unknown;
+  provisioning?: ProvisioningKind | null;
+  hosts: Array<{ metadata: { namespace: string } }>;
+}): boolean {
+  if (!args.loaded) return false;
+  if (args.error && !isNotFoundError(args.error)) return false;
+  if (isWatchAllNamespacesEnabled(args.provisioning)) return false;
+  return args.hosts.some(
+    (h) => h.metadata.namespace && h.metadata.namespace !== MACHINE_API_NS,
+  );
+}
+
 /** Cluster-scoped Machine Config Operator pool. Network Bond groups nodes by MCP. */
 export const MachineConfigPoolModel: K8sModel = {
   apiVersion: 'v1',

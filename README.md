@@ -22,7 +22,7 @@ Open from **Community Tools → Compute** after the storefront and this plugin a
 
 ## Install (image cache)
 
-Storefront **Add** applies `catalog/deploy/oct-baremetal.yaml`, which **precreates** PVC `image-cache` (100Gi) before `discovery-service` so the pod can schedule. Omit `storageClassName` to use the cluster default StorageClass; the Add dialog can pick another class.
+Storefront **Add** applies `catalog/deploy/oct-baremetal.yaml`, which **precreates** PVC `image-cache` (100Gi) before `discovery-service` so the pod can schedule. Omit `storageClassName` to use the cluster default StorageClass; the Add dialog can pick another class. Add also checks Metal3 `watchAllNamespaces` so BareMetal Operator reconciles hosts outside `openshift-machine-api`.
 
 Documented `oc apply` (cluster-admin; do not apply unless asked):
 

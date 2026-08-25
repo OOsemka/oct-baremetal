@@ -62,12 +62,15 @@ import {
   NodeNetworkStateModel,
   NodeNetworkStateKind,
   SecretModel,
+  ProvisioningModel,
+  ProvisioningKind,
   getProvisioningState,
   isPoweredOn,
   getHardwareSummary,
   getSystemVendorInfo,
   isAvailableForProvisioning,
   isProvisioned,
+  shouldWarnBmoNamespaceWatch,
 } from '../utils/k8s-resources';
 import {
   RoutableIp,
@@ -175,6 +178,15 @@ const BaremetalNodesPage: FC = () => {
     namespaced: false,
   });
 
+  const [provisioning, provisioningLoaded, provisioningError] = useK8sWatchResource<ProvisioningKind>({
+    groupVersionKind: {
+      group: ProvisioningModel.apiGroup,
+      version: ProvisioningModel.apiVersion,
+      kind: ProvisioningModel.kind,
+    },
+    name: 'provisioning-configuration',
+  });
+
   const hosts = useMemo(
     () => (bmhList as BareMetalHostKind[]) || [],
     [bmhList],
@@ -259,6 +271,13 @@ const BaremetalNodesPage: FC = () => {
     () => Array.from(new Set(hosts.map((bmh) => bmh.metadata.namespace))).sort(),
     [hosts],
   );
+
+  const showWatchAllAlert = shouldWarnBmoNamespaceWatch({
+    loaded: provisioningLoaded,
+    error: provisioningError,
+    provisioning,
+    hosts,
+  });
 
   const filteredHosts = useMemo(() => {
     let result = hosts;
@@ -466,6 +485,19 @@ const BaremetalNodesPage: FC = () => {
 
       <PageSection>
         <CommunityDisclaimer />
+
+        {showWatchAllAlert && (
+          <Alert
+            className="bmh-watch-alert"
+            variant="warning"
+            title={t('BareMetal Operator is not watching all namespaces')}
+            isInline
+          >
+            {t(
+              'BareMetal Operator only reconciles hosts in openshift-machine-api. Hosts in other namespaces stay Unknown until spec.watchAllNamespaces is true, or they live in openshift-machine-api.',
+            )}
+          </Alert>
+        )}
 
         {bmhError && (
           <Alert variant="danger" title={t('Error')} isInline>
