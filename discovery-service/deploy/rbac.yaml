@@ -30,6 +30,15 @@ rules:
       - snapshot.storage.k8s.io
     resources:
       - volumesnapshots
+      - volumesnapshotclasses
+    verbs:
+      - get
+      - list
+  # List StorageClasses (image-cache / snapshot restore uses the Add class)
+  - apiGroups:
+      - storage.k8s.io
+    resources:
+      - storageclasses
     verbs:
       - get
       - list

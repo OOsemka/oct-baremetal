@@ -32,7 +32,7 @@ Display name is **Bare Metal Hosts**.
 Two axes in the catalog: git tag **`v1.x.x`** (semver) and optional branch **`ocp-X.Y`** when PatternFly or APIs diverge. Image tags **always** `<semver>-ocp<major.minor>` (e.g. `1.1.0-ocp4.22`). Storefront Add installs the newest stable semver compatible with the cluster; Update is explicit; one ConsolePlugin name runs one version.
 
 - Git: `main` tracks the newest supported minor (currently **4.22**). Optional `ocp-4.22`, `ocp-4.21`.
-- Images: `oct-baremetal:1.1.0-ocp4.22`; discovery `oct-baremetal-discovery:1.1.0-ocp4.22`. Never catalog `:1.1.0` unless that combined tag exists and is public.
+- Images: `oct-baremetal:1.1.0-ocp4.22` and `:1.1.0-ocp4.21`; discovery `oct-baremetal-discovery` with the same pair. **Always publish both** OpenShift minor tags (same digest if bits match). Never catalog `:1.1.0` unless that combined tag exists and is public.
 - PatternFly 6 on 4.22; do not mix PF majors on one branch.
 
 ## Navigation
@@ -55,6 +55,7 @@ Do not add those paths as left-nav hrefs here.
 
 - Proxy aliases in `deploy/consoleplugin.yaml` (`discovery-service`, `bmh-proxy`).
 - Do not log BMC passwords, kube tokens, or cloud-init secrets.
+- **No environment-specific hardcoding.** Never put a lab StorageClass, VLAN, CIDR, hostname, or similar into code or install YAML. Omit the field (cluster default), read it from the cluster, or use what the admin chose at Add. See `.cursor/rules/oct-no-env-hardcoding.mdc`.
 
 ## Do-not-break list
 

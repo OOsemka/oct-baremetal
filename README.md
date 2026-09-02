@@ -5,7 +5,7 @@
 Standalone OpenShift Console plugin for Metal3 BareMetalHost inventory, BMC Redfish register, and golden-image deploy.
 
 - **Plugin ID:** `oct-baremetal`
-- **Image:** `quay.io/<org>/oct-baremetal:1.1.0-ocp4.22` (`<semver>-ocp<major.minor>`; aliases `:1.1.0` / `:4.22` may still exist)
+- **Image:** `quay.io/<org>/oct-baremetal:1.1.0-ocp4.22` and `:1.1.0-ocp4.21` (`<semver>-ocp<major.minor>`; always publish both minors; aliases `:1.1.0` / `:4.22` may still exist)
 - **Git branch:** `main` / `ocp-4.22` (one `ocp-X.Y` branch per OpenShift minor)
 
 This folder may still be named `openshift-baremetal-dashboard`. The plugin ID is `oct-baremetal`. Existing clusters that installed `openshift-baremetal-dashboard` need a **reinstall**. This is **not** the Community Tools catalog; hubs live in [oct-storefront](../oct-storefront). Network Bond is [oct-network-bond](../oct-network-bond).
@@ -23,6 +23,10 @@ Open from **Community Tools → Compute** after the storefront and this plugin a
 ## Install (image cache)
 
 Storefront **Add** applies `catalog/deploy/oct-baremetal.yaml`, which **precreates** PVC `image-cache` (100Gi) before `discovery-service` so the pod can schedule. Omit `storageClassName` to use the cluster default StorageClass; the Add dialog can pick another class. Add also checks Metal3 `watchAllNamespaces` so BareMetal Operator reconciles hosts outside `openshift-machine-api`.
+
+## Contributing — cluster-portable code
+
+Do **not** hardcode environment-specific values: StorageClass names, VLAN/CIDR/bond names, lab domains, node names, or cluster URLs. Those belong to the target cluster. Omit the field for the cluster default, read the live object, or use the value chosen at storefront **Add**. Same rule for AI assistants: `.cursor/rules/oct-no-env-hardcoding.mdc`.
 
 Documented `oc apply` (cluster-admin; do not apply unless asked):
 

@@ -83,6 +83,10 @@ oc apply -f deploy/deployment.yaml
 
 The service annotation `service.beta.openshift.io/serving-cert-secret-name` tells OpenShift's service-ca to generate a TLS certificate and mount it into the pod. The service listens on HTTPS (8443) in-cluster and HTTP (8080) for health probes.
 
+Never hardcode a lab StorageClass, VLAN, hostname, or similar in this service. The image-cache PVC class comes from Add / the cluster default; temp snapshot PVCs follow that class when the CSI driver matches.
+
+## Configuration
+
 ## Configuration
 
 | Flag | Default | Description |

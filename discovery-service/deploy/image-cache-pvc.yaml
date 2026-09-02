@@ -9,12 +9,13 @@ metadata:
   annotations:
     description: >-
       Shared cache for bare-metal OS images served over HTTP. Sized for
-      2-3 raw disk images. Omit storageClassName to use the cluster default
-      StorageClass. Override at create time via storefront Add, annotation
-      communitytools.io/storage-class, CommunityTool spec.storageClassName,
-      or by setting spec.storageClassName in this manifest. storageClassName
-      is immutable after the PVC is Bound. Resize with: oc edit pvc
-      image-cache -n oct-baremetal (storage class must support expansion).
+      2-3 raw disk images. Never hardcode a lab StorageClass. Omit
+      storageClassName to use the cluster default. Override at create time
+      via storefront Add, annotation communitytools.io/storage-class,
+      CommunityTool spec.storageClassName, or spec.storageClassName in this
+      manifest. storageClassName is immutable after the PVC is Bound. Resize
+      with: oc edit pvc image-cache -n oct-baremetal (storage class must
+      support expansion).
 spec:
   accessModes:
     - ReadWriteOnce

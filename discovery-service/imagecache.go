@@ -1,5 +1,9 @@
 package main
 
+// Image cache for Ironic. Cluster-portable: never hardcode a StorageClass,
+// network, or other lab-specific value. Use the class chosen at Add
+// (image-cache PVC) or a CSI driver match from the live cluster.
+
 import (
 	"crypto/sha256"
 	"crypto/tls"
@@ -573,9 +577,26 @@ func (m *ImageCacheManager) createPVCFromSnapshot(ns, pvcName, snapshotName stri
 	}
 	log.Printf("[IMAGE-CACHE] Snapshot info — snapshot: %s, restoreSize: %s", snapshotName, restoreSize)
 
-	storageClass := os.Getenv("STORAGE_CLASS")
-	if storageClass == "" {
-		storageClass = "odf-storagecluster-ceph-fast-pool-rbd"
+	pvcSpec := map[string]interface{}{
+		"dataSource": map[string]interface{}{
+			"name":     snapshotName,
+			"kind":     "VolumeSnapshot",
+			"apiGroup": "snapshot.storage.k8s.io",
+		},
+		"accessModes": []string{"ReadWriteOnce"},
+		"volumeMode":  "Block",
+		"resources": map[string]interface{}{
+			"requests": map[string]interface{}{
+				"storage": restoreSize,
+			},
+		},
+	}
+	storageClass := m.storageClassForTempPVC(snap)
+	if storageClass != "" {
+		pvcSpec["storageClassName"] = storageClass
+		log.Printf("[IMAGE-CACHE] Temp PVC storage class — name: %s", storageClass)
+	} else {
+		log.Printf("[IMAGE-CACHE] Temp PVC storage class omitted (cluster default)")
 	}
 
 	pvc := map[string]interface{}{
@@ -589,21 +610,7 @@ func (m *ImageCacheManager) createPVCFromSnapshot(ns, pvcName, snapshotName stri
 				"baremetal-dashboard/temp-pvc":  "true",
 			},
 		},
-		"spec": map[string]interface{}{
-			"dataSource": map[string]interface{}{
-				"name":     snapshotName,
-				"kind":     "VolumeSnapshot",
-				"apiGroup": "snapshot.storage.k8s.io",
-			},
-			"accessModes":      []string{"ReadWriteOnce"},
-			"volumeMode":       "Block",
-			"storageClassName": storageClass,
-			"resources": map[string]interface{}{
-				"requests": map[string]interface{}{
-					"storage": restoreSize,
-				},
-			},
-		},
+		"spec": pvcSpec,
 	}
 
 	pvcPath := fmt.Sprintf("/api/v1/namespaces/%s/persistentvolumeclaims", ns)
@@ -623,11 +630,151 @@ func (m *ImageCacheManager) createPVCFromSnapshot(ns, pvcName, snapshotName stri
 					return nil
 				}
 			}
+			if msg := pvcProvisioningFailure(obj); msg != "" {
+				return fmt.Errorf("temp PVC %s failed to provision: %s", pvcName, msg)
+			}
 		}
 		time.Sleep(3 * time.Second)
 	}
 	log.Printf("[IMAGE-CACHE] ERROR: temp PVC bind timeout — pvc: %s, namespace: %s", pvcName, ns)
 	return fmt.Errorf("temp PVC %s did not bind within 5 min", pvcName)
+}
+
+func pvcProvisioningFailure(obj map[string]interface{}) string {
+	status, _ := obj["status"].(map[string]interface{})
+	if status == nil {
+		return ""
+	}
+	conds, _ := status["conditions"].([]interface{})
+	for _, raw := range conds {
+		c, _ := raw.(map[string]interface{})
+		if c == nil {
+			continue
+		}
+		typ, _ := c["type"].(string)
+		msg, _ := c["message"].(string)
+		if typ == "Resizing" {
+			continue
+		}
+		if strings.Contains(strings.ToLower(msg), "not found") || strings.Contains(strings.ToLower(msg), "provisioning failed") {
+			return msg
+		}
+	}
+	return ""
+}
+
+// installStorageClass is the StorageClass chosen at storefront Add for PVC
+// image-cache. Never hardcode a class name.
+func (m *ImageCacheManager) installStorageClass() string {
+	ns := strings.TrimSpace(os.Getenv("POD_NAMESPACE"))
+	if ns == "" {
+		ns = "oct-baremetal"
+	}
+	pvc, err := m.k8s.Get(fmt.Sprintf("/api/v1/namespaces/%s/persistentvolumeclaims/image-cache", ns))
+	if err != nil {
+		log.Printf("[IMAGE-CACHE] Could not read image-cache PVC in %s: %v", ns, err)
+		return ""
+	}
+	spec, _ := pvc["spec"].(map[string]interface{})
+	if spec == nil {
+		return ""
+	}
+	sc, _ := spec["storageClassName"].(string)
+	return strings.TrimSpace(sc)
+}
+
+// storageClassForTempPVC uses the Add StorageClass when that class can restore
+// the snapshot (same CSI driver as the VolumeSnapshotClass). Otherwise it
+// picks a StorageClass with that driver — kubevirt default virt class, else
+// cluster default, else first match. Never a hardcoded name.
+func (m *ImageCacheManager) storageClassForTempPVC(snap map[string]interface{}) string {
+	add := m.installStorageClass()
+	driver := m.snapshotCSIDriver(snap)
+	if add != "" {
+		if driver == "" || m.storageClassProvisioner(add) == driver {
+			return add
+		}
+		log.Printf("[IMAGE-CACHE] Add StorageClass %s cannot restore this snapshot (CSI driver %s); selecting a compatible class", add, driver)
+	}
+	if driver != "" {
+		if match := m.storageClassForCSIDriver(driver); match != "" {
+			return match
+		}
+	}
+	return add
+}
+
+func (m *ImageCacheManager) snapshotCSIDriver(snap map[string]interface{}) string {
+	spec, _ := snap["spec"].(map[string]interface{})
+	if spec == nil {
+		return ""
+	}
+	snapClass, _ := spec["volumeSnapshotClassName"].(string)
+	if snapClass == "" {
+		return ""
+	}
+	vsc, err := m.k8s.Get("/apis/snapshot.storage.k8s.io/v1/volumesnapshotclasses/" + snapClass)
+	if err != nil {
+		log.Printf("[IMAGE-CACHE] Could not get VolumeSnapshotClass %s: %v", snapClass, err)
+		return ""
+	}
+	driver, _ := vsc["driver"].(string)
+	return strings.TrimSpace(driver)
+}
+
+func (m *ImageCacheManager) storageClassProvisioner(name string) string {
+	if name == "" {
+		return ""
+	}
+	sc, err := m.k8s.Get("/apis/storage.k8s.io/v1/storageclasses/" + name)
+	if err != nil {
+		log.Printf("[IMAGE-CACHE] Could not get StorageClass %s: %v", name, err)
+		return ""
+	}
+	p, _ := sc["provisioner"].(string)
+	return strings.TrimSpace(p)
+}
+
+func (m *ImageCacheManager) storageClassForCSIDriver(driver string) string {
+	list, err := m.k8s.Get("/apis/storage.k8s.io/v1/storageclasses")
+	if err != nil {
+		log.Printf("[IMAGE-CACHE] Could not list StorageClasses: %v", err)
+		return ""
+	}
+	items, _ := list["items"].([]interface{})
+	var first, k8sDefault, virtDefault string
+	for _, raw := range items {
+		sc, _ := raw.(map[string]interface{})
+		if sc == nil {
+			continue
+		}
+		prov, _ := sc["provisioner"].(string)
+		if prov != driver {
+			continue
+		}
+		meta, _ := sc["metadata"].(map[string]interface{})
+		name, _ := meta["name"].(string)
+		if name == "" {
+			continue
+		}
+		if first == "" {
+			first = name
+		}
+		ann, _ := meta["annotations"].(map[string]interface{})
+		if fmt.Sprint(ann["storageclass.kubevirt.io/is-default-virt-class"]) == "true" {
+			virtDefault = name
+		}
+		if fmt.Sprint(ann["storageclass.kubernetes.io/is-default-class"]) == "true" {
+			k8sDefault = name
+		}
+	}
+	if virtDefault != "" {
+		return virtDefault
+	}
+	if k8sDefault != "" {
+		return k8sDefault
+	}
+	return first
 }
 
 func (m *ImageCacheManager) createVMExport(ns, exportName, pvcName string) error {

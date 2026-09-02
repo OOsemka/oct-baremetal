@@ -7,6 +7,9 @@ metadata:
     app: discovery-service
 spec:
   replicas: 1
+  # RWO image-cache cannot attach to two nodes; RollingUpdate deadlocks.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: discovery-service
@@ -18,6 +21,11 @@ spec:
       containers:
         - name: discovery-service
           image: quay.io/cjanisze/oct-baremetal-discovery:1.1.0-ocp4.22
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           ports:
             - containerPort: 8080
               name: http
