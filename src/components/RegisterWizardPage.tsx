@@ -6,6 +6,7 @@ import {
   DocumentTitle,
 } from '@openshift-console/dynamic-plugin-sdk';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom-v5-compat';
 import {
   PageSection,
   Wizard,
@@ -88,6 +89,7 @@ interface DiscoveredSystemInfo {
 
 const RegisterWizardPage: FC = () => {
   const { t } = useTranslation('plugin__oct-baremetal');
+  const navigate = useNavigate();
 
   // Step 1: BMC Connection
   const [bmcAddress, setBmcAddress] = useState('');
@@ -290,7 +292,7 @@ const RegisterWizardPage: FC = () => {
       dashboardLogger.info('REGISTER', 'BMH registered successfully', `name: ${hostName}`);
       setRegisterSuccess(true);
       setTimeout(() => {
-        window.location.href = '/baremetal/nodes';
+        navigate('/baremetal/nodes');
       }, 2500);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
@@ -303,7 +305,7 @@ const RegisterWizardPage: FC = () => {
   }, [buildCredentialSecret, buildNmstateSecret, buildBmhResource, networkMode, hostName, namespace]);
 
   const handleCancel = () => {
-    window.location.href = '/baremetal/nodes';
+    navigate('/baremetal/nodes');
   };
 
   const bmhPreviewYaml = toYaml(buildBmhResource() as Record<string, unknown>);

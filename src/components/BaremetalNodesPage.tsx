@@ -8,6 +8,7 @@ import {
   k8sGet,
 } from '@openshift-console/dynamic-plugin-sdk';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom-v5-compat';
 import {
   PageSection,
   Toolbar,
@@ -128,6 +129,7 @@ const HostIpCell: FC<{ info: RoutableIp | null }> = ({ info }) => {
 
 const BaremetalNodesPage: FC = () => {
   const { t } = useTranslation('plugin__oct-baremetal');
+  const navigate = useNavigate();
 
   const [selectedNamespace, setSelectedNamespace] = useState<string>('all');
   const [isNamespaceOpen, setIsNamespaceOpen] = useState(false);
@@ -395,7 +397,7 @@ const BaremetalNodesPage: FC = () => {
           title: t('Deploy'),
           onClick: () => {
             dashboardLogger.info('DEPLOY', 'Navigating to deploy page', `host: ${bmh.metadata.name}, namespace: ${bmh.metadata.namespace}`);
-            window.location.href = `/baremetal/nodes/deploy/${bmh.metadata.namespace}/${bmh.metadata.name}`;
+            navigate(`/baremetal/nodes/deploy/${bmh.metadata.namespace}/${bmh.metadata.name}`);
           },
         });
       }
@@ -425,7 +427,7 @@ const BaremetalNodesPage: FC = () => {
 
       return actions;
     },
-    [t, handlePowerToggle],
+    [t, navigate, handlePowerToggle],
   );
 
   if (!bmhLoaded) {
@@ -477,7 +479,7 @@ const BaremetalNodesPage: FC = () => {
       <ListPageHeader title={t('Bare Metal Hosts')}>
         <Button
           variant="primary"
-          onClick={() => { window.location.href = '/baremetal/nodes/register'; }}
+          onClick={() => { navigate('/baremetal/nodes/register'); }}
         >
           {t('Register Host')}
         </Button>

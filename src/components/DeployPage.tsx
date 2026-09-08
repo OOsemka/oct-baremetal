@@ -9,6 +9,7 @@ import {
   consoleFetchJSON,
 } from '@openshift-console/dynamic-plugin-sdk';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom-v5-compat';
 import {
   PageSection,
   Button,
@@ -186,6 +187,7 @@ function parsePathParams(): { ns: string; name: string } {
 
 const DeployPage: FC = () => {
   const { t } = useTranslation('plugin__oct-baremetal');
+  const navigate = useNavigate();
   const { ns, name } = useMemo(() => parsePathParams(), []);
 
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -802,7 +804,7 @@ const DeployPage: FC = () => {
       dashboardLogger.info('DEPLOY', 'Host deployment initiated successfully', `host: ${bmh.metadata.name}`);
       setSuccess(true);
       setTimeout(() => {
-        window.location.href = '/baremetal/nodes';
+        navigate('/baremetal/nodes');
       }, 2000);
     } catch (err) {
       dashboardLogger.error('DEPLOY', 'Deployment failed', String(err));
@@ -813,7 +815,7 @@ const DeployPage: FC = () => {
   };
 
   const handleCancel = () => {
-    window.location.href = '/baremetal/nodes';
+    navigate('/baremetal/nodes');
   };
 
   if (!bmhLoaded) {
