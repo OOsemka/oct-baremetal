@@ -90,6 +90,16 @@ Do not add those paths as left-nav hrefs here.
 - Do not log BMC passwords, kube tokens, or cloud-init secrets.
 - **No environment-specific hardcoding.** Never put a lab StorageClass, VLAN, CIDR, hostname, or similar into code or install YAML. Omit the field (cluster default), read it from the cluster, or use what the admin chose at Add. See `.cursor/rules/oct-no-env-hardcoding.mdc`.
 
+## Companion images
+
+The deploy bundle (`catalog/deploy/oct-baremetal.yaml` in the storefront) references a sidecar image with its own independent version. When bumping either image, update both the deploy YAML and this section.
+
+| Image | Current version | Quay repo |
+| --- | --- | --- |
+| `oct-baremetal-discovery` | **1.1.0** | `quay.io/cjanisze/oct-baremetal-discovery` |
+
+The discovery-service version (`1.1.0`) is independent of the plugin version (`0.1.1`). Both are listed in the deploy bundle. After rebuilding either image, update the deploy YAML in the storefront, rebuild the storefront image, and run `scripts/validate-catalog.sh`. See `oct-release-checklist.mdc`.
+
 ## Do-not-break list
 
 Do **not** change unless you are deliberately migrating a live cluster:
