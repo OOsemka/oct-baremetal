@@ -56,6 +56,7 @@ import {
 import NMStateBuilder, { DiscoveredNic } from './NMStateBuilder';
 import { toYaml } from '../utils/yaml';
 
+import CommunityDisclaimer from './CommunityDisclaimer';
 import dashboardLogger from '../utils/logger';
 
 import './baremetal-nodes.css';
@@ -333,6 +334,10 @@ const RegisterWizardPage: FC = () => {
       </PageSection>
 
       <ListPageHeader title={t('Register BareMetalHost')} />
+
+      <PageSection>
+        <CommunityDisclaimer />
+      </PageSection>
 
       <PageSection>
         <Wizard onClose={handleCancel}>
