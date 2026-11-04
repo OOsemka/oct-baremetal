@@ -648,7 +648,7 @@ export function nmstateToKeyfiles(nmstateYaml: string): KeyfileOutput[] {
   }
 
   // --- VLAN parent interfaces that weren't generated yet ---
-  for (const parentName of vlanParents) {
+  for (const parentName of Array.from(vlanParents)) {
     if (!generatedInterfaces.has(parentName)) {
       const parentIface = ifaceByName.get(parentName);
       const macAddress = parentIface?.['mac-address'];

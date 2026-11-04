@@ -213,7 +213,7 @@ const DeployModal: FC<DeployModalProps> = ({ bmh, onClose }) => {
         });
       }
 
-      const patchPayload: object[] = [
+      const patchPayload: { op: string; path: string; value?: unknown }[] = [
         {
           op: 'add',
           path: '/spec/image',
