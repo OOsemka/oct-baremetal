@@ -41,7 +41,9 @@ Open from **Community Tools → Compute** after the storefront and this plugin a
 
 Storefront **Add** applies `catalog/deploy/oct-baremetal.yaml`, which **precreates** PVC `image-cache` (100Gi) before `discovery-service` so the pod can schedule. Omit `storageClassName` to use the cluster default StorageClass; the Add dialog can pick another class. Add also checks Metal3 `watchAllNamespaces` so BareMetal Operator reconciles hosts outside `openshift-machine-api`.
 
-## Contributing — cluster-portable code
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md): setup, `yarn verify`, testing on your own cluster, the project rules and what maintainers do at release.
 
 Do **not** hardcode environment-specific values: StorageClass names, VLAN/CIDR/bond names, lab domains, node names, or cluster URLs. Those belong to the target cluster. Omit the field for the cluster default, read the live object, or use the value chosen at storefront **Add**. Same rule for AI assistants: `.cursor/rules/oct-no-env-hardcoding.mdc`.
 

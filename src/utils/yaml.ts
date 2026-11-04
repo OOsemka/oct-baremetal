@@ -86,6 +86,6 @@ function renderValue(value: YamlValue, indent: number): string[] {
   return renderLines(value, indent);
 }
 
-export function toYaml(obj: Record<string, YamlValue>): string {
-  return renderLines(obj, 0).join('\n') + '\n';
+export function toYaml(obj: Record<string, unknown>): string {
+  return renderLines(obj as YamlValue, 0).join('\n') + '\n';
 }

@@ -760,7 +760,7 @@ const DeployPage: FC = () => {
         imageValue.format = 'raw';
       }
 
-      const patchPayload: object[] = [
+      const patchPayload: { op: string; path: string; value?: unknown }[] = [
         {
           op: 'add',
           path: '/spec/image',
