@@ -7,6 +7,9 @@ metadata:
     app: discovery-service
     app.kubernetes.io/part-of: oct-baremetal
 spec:
+  # Only the image files are public (Ironic fetches them without a user); the API is
+  # reached through the console proxy.
+  path: /api/v1/image-cache/images/
   to:
     kind: Service
     name: discovery-service

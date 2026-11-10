@@ -5,6 +5,8 @@ package main
 // (image-cache PVC) or a CSI driver match from the live cluster.
 
 import (
+	"github.com/OOsemka/oct-storefront/backend-security-kit/validate"
+
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/base64"
@@ -40,19 +42,19 @@ const (
 )
 
 type CachedImage struct {
-	Name               string     `json:"name"`
-	DataSourceName     string     `json:"dataSourceName"`
-	Namespace          string     `json:"namespace"`
-	Phase              CachePhase `json:"phase"`
-	DownloadURL        string     `json:"downloadUrl,omitempty"`
-	ChecksumURL        string     `json:"checksumUrl,omitempty"`
-	ExternalURL        string     `json:"externalUrl,omitempty"`
-	ExternalChecksumURL string    `json:"externalChecksumUrl,omitempty"`
-	SHA256             string     `json:"sha256,omitempty"`
-	SizeBytes          int64      `json:"sizeBytes,omitempty"`
-	Error              string     `json:"error,omitempty"`
-	FileName           string     `json:"fileName"`
-	StartedAt          time.Time  `json:"startedAt"`
+	Name                string     `json:"name"`
+	DataSourceName      string     `json:"dataSourceName"`
+	Namespace           string     `json:"namespace"`
+	Phase               CachePhase `json:"phase"`
+	DownloadURL         string     `json:"downloadUrl,omitempty"`
+	ChecksumURL         string     `json:"checksumUrl,omitempty"`
+	ExternalURL         string     `json:"externalUrl,omitempty"`
+	ExternalChecksumURL string     `json:"externalChecksumUrl,omitempty"`
+	SHA256              string     `json:"sha256,omitempty"`
+	SizeBytes           int64      `json:"sizeBytes,omitempty"`
+	Error               string     `json:"error,omitempty"`
+	FileName            string     `json:"fileName"`
+	StartedAt           time.Time  `json:"startedAt"`
 }
 
 type ImageCacheManager struct {
@@ -62,6 +64,9 @@ type ImageCacheManager struct {
 	externalBaseURL string
 	images          map[string]*CachedImage
 	mu              sync.RWMutex
+	// allowedNamespaces are the namespaces prepare may export images from
+	// (IMAGE_NAMESPACES; default openshift-virtualization-os-images).
+	allowedNamespaces []string
 }
 
 func NewImageCacheManager(k8s *K8sClient) *ImageCacheManager {
@@ -235,6 +240,21 @@ func (m *ImageCacheManager) scanExistingCache() {
 
 // ── HTTP handlers ───────────────────────────────────────────────────────
 
+// namespaceAllowed: a valid name listed in IMAGE_NAMESPACES. The list is set by the
+// cluster admin (default openshift-virtualization-os-images), so platform namespaces
+// on it are intended.
+func (m *ImageCacheManager) namespaceAllowed(ns string) bool {
+	if validate.DNS1123Label(ns) != nil {
+		return false
+	}
+	for _, a := range m.allowedNamespaces {
+		if a == ns {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *ImageCacheManager) handlePrepare(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		DataSourceName string `json:"dataSourceName"`
@@ -252,6 +272,16 @@ func (m *ImageCacheManager) handlePrepare(w http.ResponseWriter, r *http.Request
 	}
 	if req.Namespace == "" {
 		req.Namespace = defaultOSImagesNS
+	}
+	// Names end up in file names and API paths; the namespace is limited to the image
+	// namespaces this deployment allows (this backend acts there with its own account).
+	if err := validate.DNS1123Subdomain(req.DataSourceName); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid dataSourceName: "+err.Error())
+		return
+	}
+	if !m.namespaceAllowed(req.Namespace) {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("namespace %q is not an image namespace this deployment allows (IMAGE_NAMESPACES)", req.Namespace))
+		return
 	}
 
 	name := req.DataSourceName
@@ -607,7 +637,7 @@ func (m *ImageCacheManager) createPVCFromSnapshot(ns, pvcName, snapshotName stri
 			"namespace": ns,
 			"labels": map[string]interface{}{
 				"app.kubernetes.io/managed-by": "oct-baremetal",
-				"baremetal-dashboard/temp-pvc":  "true",
+				"baremetal-dashboard/temp-pvc": "true",
 			},
 		},
 		"spec": pvcSpec,

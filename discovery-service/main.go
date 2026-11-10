@@ -1,93 +1,152 @@
 package main
 
 import (
-	"crypto/tls"
+	"context"
 	"flag"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"strings"
+	"syscall"
 	"time"
+
+	"github.com/OOsemka/oct-storefront/backend-security-kit/auth"
+	"github.com/OOsemka/oct-storefront/backend-security-kit/kubeclient"
+	"github.com/OOsemka/oct-storefront/backend-security-kit/server"
 )
 
+// extension is the catalog id, used for the cluster policy's per-extension auth mode.
+const extension = "oct-baremetal"
+
 func main() {
-	httpPort := flag.String("http-port", "8080", "HTTP port for local development")
-	httpsPort := flag.String("https-port", "8443", "HTTPS port for TLS serving")
+	httpPort := flag.String("http-port", "8080", "plain HTTP port: image downloads for Metal3/Ironic and /healthz only")
+	httpsPort := flag.String("https-port", "8443", "HTTPS port for the API (reached through the console proxy)")
 	tlsCert := flag.String("tls-cert", "/var/run/secrets/tls/tls.crt", "Path to TLS certificate")
 	tlsKey := flag.String("tls-key", "/var/run/secrets/tls/tls.key", "Path to TLS key")
 	flag.Parse()
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", handleHealthz)
-	mux.HandleFunc("POST /api/v1/discover", handleDiscover)
-	mux.HandleFunc("POST /api/v1/log", handleLog)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	// Image cache: PVC-backed HTTP server for bridging PVC images → Metal3
-	k8sClient, k8sErr := NewK8sClient()
-	if k8sErr != nil {
-		log.Printf("[IMAGE-CACHE] K8s client unavailable (not in-cluster?): %v — image cache disabled", k8sErr)
+	// Image cache: PVC-backed HTTP server for bridging PVC images → Metal3.
+	var cache *ImageCacheManager
+	if k8sClient, err := NewK8sClient(); err != nil {
+		log.Printf("[IMAGE-CACHE] K8s client unavailable (not in-cluster?): %v — image cache disabled", err)
 	} else {
-		cache := NewImageCacheManager(k8sClient)
-		mux.HandleFunc("POST /api/v1/image-cache/prepare", cache.handlePrepare)
-		mux.HandleFunc("GET /api/v1/image-cache/status/{name}", cache.handleStatus)
-		mux.HandleFunc("GET /api/v1/image-cache/list", cache.handleList)
-		mux.HandleFunc("GET /api/v1/image-cache/images/{filename}", cache.handleServeFile)
-		mux.HandleFunc("DELETE /api/v1/image-cache/{name}", cache.handleDelete)
-		log.Printf("[IMAGE-CACHE] Manager initialized — cacheDir: %s, routes registered", cache.cacheDir)
+		cache = NewImageCacheManager(k8sClient)
+		cache.allowedNamespaces = imageNamespaces()
+		log.Printf("[IMAGE-CACHE] Manager initialized — cacheDir: %s, image namespaces: %v", cache.cacheDir, cache.allowedNamespaces)
 	}
 
-	handler := withCORS(mux)
-
-	// WriteTimeout is large because Metal3/Ironic downloads multi-GB images
-	// through this server.
+	// :8080 is what the image-cache Route exposes outside the cluster. It serves only
+	// image files (fetched by Ironic, which has no user) and the kubelet probes.
 	go func() {
-		addr := ":" + *httpPort
-		log.Printf("Starting HTTP server on %s", addr)
 		srv := &http.Server{
-			Addr:         addr,
-			Handler:      handler,
-			ReadTimeout:  10 * time.Second,
-			WriteTimeout: 30 * time.Minute,
-			IdleTimeout:  120 * time.Second,
+			Addr:              ":" + *httpPort,
+			Handler:           imageMux(cache),
+			ReadHeaderTimeout: 10 * time.Second,
+			ReadTimeout:       10 * time.Second,
+			WriteTimeout:      30 * time.Minute, // multi-GB images
+			IdleTimeout:       120 * time.Second,
 		}
-		if err := srv.ListenAndServe(); err != nil {
-			log.Printf("HTTP server error: %v", err)
+		log.Printf("Starting image server on %s", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("image server: %v", err)
 		}
 	}()
 
-	// Start HTTPS server if certs exist
-	if _, err := os.Stat(*tlsCert); err == nil {
-		addr := ":" + *httpsPort
-		log.Printf("Starting HTTPS server on %s", addr)
-		srv := &http.Server{
-			Addr:    addr,
-			Handler: handler,
-			TLSConfig: &tls.Config{
-				MinVersion: tls.VersionTLS12,
-			},
-			ReadTimeout:  10 * time.Second,
-			WriteTimeout: 30 * time.Minute,
-			IdleTimeout:  120 * time.Second,
-		}
-		if err := srv.ListenAndServeTLS(*tlsCert, *tlsKey); err != nil {
-			log.Fatalf("HTTPS server error: %v", err)
-		}
-	} else {
-		log.Println("TLS cert not found, running HTTP only")
-		select {} // block forever
+	// :8443 is the API, reached only through the console proxy with the user's token
+	// (ConsolePlugin authorization: UserToken). Every route is checked with the
+	// caller's permissions (backend-security-kit). Existing extensions ship
+	// AUTH_MODE=audit until a cluster admin enables enforce in the cluster policy.
+	kc, err := kubeclient.InCluster()
+	if err != nil {
+		log.Fatalf("kubeclient: %v", err)
+	}
+	policy := auth.NewPolicySource(kc, 0, logger)
+	go policy.Run(ctx)
+	authz, err := auth.New(auth.Options{
+		Extension: extension,
+		Mode:      auth.ModeFromEnv(),
+		Client:    kc,
+		Policy:    policy,
+		Logger:    logger,
+	}, apiRoutes(cache))
+	if err != nil {
+		log.Fatalf("permission table: %v", err)
+	}
+	if err := server.Run(ctx, server.Config{
+		Addr:       ":" + *httpsPort,
+		CertFile:   *tlsCert,
+		KeyFile:    *tlsKey,
+		HealthAddr: "-", // /healthz is on the image port
+		Handler:    authz.Handler(),
+		Logger:     logger,
+	}); err != nil {
+		log.Fatalf("API server: %v", err)
 	}
 }
 
-func withCORS(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		w.Header().Set("Access-Control-Max-Age", "86400")
+func bmh(verb string, ns auth.Extractor) auth.Check {
+	return auth.Check{Verb: verb, Group: "metal3.io", Resource: "baremetalhosts", Namespace: ns}
+}
 
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
-			return
+// apiRoutes is the permission table: what the caller must be allowed to do for each
+// route, and the handler that runs after the check.
+func apiRoutes(cache *ImageCacheManager) []auth.Route {
+	routes := []auth.Route{
+		// Discovery makes this backend talk to a BMC address the caller chooses, so only
+		// someone who may register hosts in the target namespace may use it.
+		{Pattern: "POST /api/v1/discover", Handler: http.HandlerFunc(handleDiscover),
+			Checks: []auth.Check{bmh("create", auth.JSONField("namespace", ""))}},
+		{Pattern: "POST /api/v1/log", Handler: http.HandlerFunc(handleLog),
+			Checks: []auth.Check{bmh("list", nil)}},
+	}
+	if cache == nil {
+		return routes
+	}
+	// The image cache is shared by the whole cluster: reading it needs a cluster-wide
+	// view of hosts, changing it the right to create hosts anywhere, and preparing an
+	// image also read access to its DataSource.
+	return append(routes,
+		auth.Route{Pattern: "POST /api/v1/image-cache/prepare", Handler: http.HandlerFunc(cache.handlePrepare),
+			Checks: []auth.Check{
+				bmh("create", nil),
+				{Verb: "get", Group: "cdi.kubevirt.io", Resource: "datasources", Namespace: auth.JSONField("namespace", defaultOSImagesNS)},
+			}},
+		auth.Route{Pattern: "GET /api/v1/image-cache/status/{name}", Handler: http.HandlerFunc(cache.handleStatus),
+			Checks: []auth.Check{bmh("list", nil)}},
+		auth.Route{Pattern: "GET /api/v1/image-cache/list", Handler: http.HandlerFunc(cache.handleList),
+			Checks: []auth.Check{bmh("list", nil)}},
+		auth.Route{Pattern: "DELETE /api/v1/image-cache/{name}", Handler: http.HandlerFunc(cache.handleDelete),
+			Checks: []auth.Check{bmh("create", nil)}},
+	)
+}
+
+// imageMux serves the plain-HTTP port: image files and health, nothing else.
+func imageMux(cache *ImageCacheManager) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", handleHealthz)
+	if cache != nil {
+		mux.HandleFunc("GET /api/v1/image-cache/images/{filename}", cache.handleServeFile)
+	}
+	return mux
+}
+
+// imageNamespaces lists the namespaces prepare may export images from
+// (IMAGE_NAMESPACES, comma-separated; default openshift-virtualization-os-images).
+func imageNamespaces() []string {
+	var out []string
+	for _, ns := range strings.Split(os.Getenv("IMAGE_NAMESPACES"), ",") {
+		if ns = strings.TrimSpace(ns); ns != "" {
+			out = append(out, ns)
 		}
-		next.ServeHTTP(w, r)
-	})
+	}
+	if len(out) == 0 {
+		out = []string{defaultOSImagesNS}
+	}
+	return out
 }

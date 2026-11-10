@@ -51,6 +51,7 @@ import {
 
 import {
   BareMetalHostModel,
+  MACHINE_API_NS,
   SecretModel,
 } from '../utils/k8s-resources';
 import NMStateBuilder, { DiscoveredNic } from './NMStateBuilder';
@@ -103,7 +104,7 @@ const RegisterWizardPage: FC = () => {
 
   // Step 2: Host Configuration
   const [hostName, setHostName] = useState('');
-  const [namespace, setNamespace] = useState('cjanisze');
+  const [namespace, setNamespace] = useState(MACHINE_API_NS);
   const [bootMac, setBootMac] = useState('');
   const [bootMode, setBootMode] = useState<'UEFI' | 'UEFISecureBoot' | 'legacy'>('UEFI');
   const [rootDeviceHint, setRootDeviceHint] = useState('');
@@ -132,6 +133,8 @@ const RegisterWizardPage: FC = () => {
           bmcAddress,
           username: bmcUsername,
           password: bmcPassword,
+          // The backend checks that the user may create BareMetalHosts here.
+          namespace,
         }),
       });
 

@@ -22,6 +22,12 @@ spec:
         - name: discovery-service
           image: quay.io/cjanisze/oct-baremetal-discovery:1.1.0-ocp4.22
           env:
+            # backend-security-kit: existing extensions start in audit (requests allowed,
+            # would-be denials logged); a cluster admin enables enforce in the cluster policy
+            # (backends.oct-baremetal.authMode). IMAGE_NAMESPACES limits image exports
+            # (default openshift-virtualization-os-images).
+            - name: AUTH_MODE
+              value: audit
             - name: POD_NAMESPACE
               valueFrom:
                 fieldRef:
