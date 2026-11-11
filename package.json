@@ -1,6 +1,6 @@
 {
   "name": "oct-baremetal",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Community project. Unofficial OpenShift Console UX enhancements. Not officially supported by Red Hat.",
   "private": true,
   "license": "Apache-2.0",
@@ -44,7 +44,7 @@
   },
   "consolePlugin": {
     "name": "oct-baremetal",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "displayName": "Bare Metal Hosts",
     "description": "Community project. Bare Metal Hosts Console plugin (inventory, register, deploy). Not officially supported by Red Hat.",
     "exposedModules": {
