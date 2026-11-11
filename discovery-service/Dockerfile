@@ -1,6 +1,6 @@
 FROM golang:1.22 AS builder
 WORKDIR /app
-COPY go.mod ./
+COPY go.mod go.sum ./
 COPY *.go ./
 RUN CGO_ENABLED=0 GOOS=linux go build -o discovery-service .
 

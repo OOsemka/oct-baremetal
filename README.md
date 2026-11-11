@@ -55,7 +55,11 @@ oc apply -f discovery-service/deploy/route.yaml
 oc apply -f discovery-service/deploy/rbac.yaml
 oc apply -f discovery-service/deploy/service.yaml
 oc apply -f discovery-service/deploy/deployment.yaml
+oc apply -f discovery-service/deploy/networkpolicy.yaml
+oc apply -f deploy/networkpolicy.yaml
 ```
+
+The plugin no longer has a ClusterRole (it never used one). On clusters that had an earlier release, the old one stays behind; it is harmless, and you can remove it with `oc delete clusterrolebinding oct-baremetal; oc delete clusterrole oct-baremetal`.
 
 A missing `image-cache` PVC leaves discovery-service Pending; the console proxy then returns **502 Bad Gateway** on image prepare/cache.
 

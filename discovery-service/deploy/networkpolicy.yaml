@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: discovery-service
+  namespace: oct-baremetal
+  labels:
+    app.kubernetes.io/part-of: oct-baremetal
+spec:
+  # The API (8443) only through the console proxy; the image port (8080) only through
+  # the router (the image-cache Route, used by Ironic). Kubelet probes are not affected.
+  podSelector:
+    matchLabels:
+      app: discovery-service
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-console
+      ports:
+        - { protocol: TCP, port: 8443 }
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              policy-group.network.openshift.io/ingress: ""
+      ports:
+        - { protocol: TCP, port: 8080 }

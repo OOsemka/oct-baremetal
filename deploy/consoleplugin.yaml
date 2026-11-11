@@ -13,6 +13,7 @@ spec:
       basePath: /
   proxy:
     - alias: bmh-proxy
+      authorization: UserToken
       endpoint:
         type: Service
         service:
@@ -20,6 +21,7 @@ spec:
           namespace: oct-baremetal
           port: 9443
     - alias: discovery-service
+      authorization: UserToken
       endpoint:
         type: Service
         service:

@@ -46,7 +46,7 @@ oc set image deploy/oct-baremetal -n oct-baremetal plugin=quay.io/<you>/oct-bare
 **Otherwise** deploy the YAML in this repo with your image:
 
 ```bash
-for f in namespace rbac service deployment consoleplugin; do
+for f in namespace service deployment networkpolicy consoleplugin; do
   sed 's|quay.io/openshift-community-tools/oct-baremetal:[^ ]*|quay.io/<you>/oct-baremetal:dev|' deploy/$f.yaml | oc apply -f -
 done
 ```

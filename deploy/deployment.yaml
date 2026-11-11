@@ -16,6 +16,8 @@ spec:
       labels:
         app: oct-baremetal
     spec:
+      # The plugin only serves static files and never calls the API.
+      automountServiceAccountToken: false
       containers:
         - name: plugin
           image: quay.io/openshift-community-tools/oct-baremetal:0.1.2-ocp4.22

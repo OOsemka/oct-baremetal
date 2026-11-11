@@ -51,6 +51,7 @@ import {
 
 import {
   BareMetalHostModel,
+  MACHINE_API_NS,
   SecretModel,
 } from '../utils/k8s-resources';
 import NMStateBuilder, { DiscoveredNic } from './NMStateBuilder';
@@ -103,7 +104,7 @@ const RegisterWizardPage: FC = () => {
 
   // Step 2: Host Configuration
   const [hostName, setHostName] = useState('');
-  const [namespace, setNamespace] = useState('cjanisze');
+  const [namespace, setNamespace] = useState(MACHINE_API_NS);
   const [bootMac, setBootMac] = useState('');
   const [bootMode, setBootMode] = useState<'UEFI' | 'UEFISecureBoot' | 'legacy'>('UEFI');
   const [rootDeviceHint, setRootDeviceHint] = useState('');
@@ -132,6 +133,8 @@ const RegisterWizardPage: FC = () => {
           bmcAddress,
           username: bmcUsername,
           password: bmcPassword,
+          // The backend checks that the user may create BareMetalHosts here.
+          namespace,
         }),
       });
 
@@ -163,7 +166,7 @@ const RegisterWizardPage: FC = () => {
     } finally {
       setDiscovering(false);
     }
-  }, [bmcAddress, bmcUsername, bmcPassword]);
+  }, [bmcAddress, bmcUsername, bmcPassword, namespace]);
 
   const handleNmstateChange = useCallback((yaml: string) => {
     setNmstateYaml(yaml);
@@ -389,11 +392,26 @@ const RegisterWizardPage: FC = () => {
                     />
                   </FormGroup>
 
+                  <FormGroup label={t('Namespace')} fieldId="namespace" isRequired>
+                    <TextInput
+                      id="namespace"
+                      value={namespace}
+                      onChange={(_event, value) => setNamespace(value)}
+                    />
+                    <FormHelperText>
+                      <HelperText>
+                        <HelperTextItem>
+                          {t('Where the BareMetalHost will be registered. Discovery needs permission to create BareMetalHosts there.')}
+                        </HelperTextItem>
+                      </HelperText>
+                    </FormHelperText>
+                  </FormGroup>
+
                   <ActionGroup>
                     <Button
                       variant="secondary"
                       onClick={handleDiscover}
-                      isDisabled={discovering || !bmcAddress || !bmcUsername || !bmcPassword}
+                      isDisabled={discovering || !bmcAddress || !bmcUsername || !bmcPassword || !namespace}
                       isLoading={discovering}
                       icon={discovering ? undefined : <ServerIcon />}
                     >
@@ -510,14 +528,6 @@ const RegisterWizardPage: FC = () => {
                         </HelperTextItem>
                       </HelperText>
                     </FormHelperText>
-                  </FormGroup>
-
-                  <FormGroup label={t('Namespace')} fieldId="namespace" isRequired>
-                    <TextInput
-                      id="namespace"
-                      value={namespace}
-                      onChange={(_event, value) => setNamespace(value)}
-                    />
                   </FormGroup>
 
                   <FormGroup label={t('BMC Address')} fieldId="bmc-full-address" isRequired>
