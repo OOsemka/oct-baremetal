@@ -166,7 +166,7 @@ const RegisterWizardPage: FC = () => {
     } finally {
       setDiscovering(false);
     }
-  }, [bmcAddress, bmcUsername, bmcPassword]);
+  }, [bmcAddress, bmcUsername, bmcPassword, namespace]);
 
   const handleNmstateChange = useCallback((yaml: string) => {
     setNmstateYaml(yaml);
@@ -392,11 +392,26 @@ const RegisterWizardPage: FC = () => {
                     />
                   </FormGroup>
 
+                  <FormGroup label={t('Namespace')} fieldId="namespace" isRequired>
+                    <TextInput
+                      id="namespace"
+                      value={namespace}
+                      onChange={(_event, value) => setNamespace(value)}
+                    />
+                    <FormHelperText>
+                      <HelperText>
+                        <HelperTextItem>
+                          {t('Where the BareMetalHost will be registered. Discovery needs permission to create BareMetalHosts there.')}
+                        </HelperTextItem>
+                      </HelperText>
+                    </FormHelperText>
+                  </FormGroup>
+
                   <ActionGroup>
                     <Button
                       variant="secondary"
                       onClick={handleDiscover}
-                      isDisabled={discovering || !bmcAddress || !bmcUsername || !bmcPassword}
+                      isDisabled={discovering || !bmcAddress || !bmcUsername || !bmcPassword || !namespace}
                       isLoading={discovering}
                       icon={discovering ? undefined : <ServerIcon />}
                     >
@@ -513,14 +528,6 @@ const RegisterWizardPage: FC = () => {
                         </HelperTextItem>
                       </HelperText>
                     </FormHelperText>
-                  </FormGroup>
-
-                  <FormGroup label={t('Namespace')} fieldId="namespace" isRequired>
-                    <TextInput
-                      id="namespace"
-                      value={namespace}
-                      onChange={(_event, value) => setNamespace(value)}
-                    />
                   </FormGroup>
 
                   <FormGroup label={t('BMC Address')} fieldId="bmc-full-address" isRequired>

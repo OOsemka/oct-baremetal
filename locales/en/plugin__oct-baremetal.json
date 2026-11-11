@@ -319,5 +319,6 @@
   "Speed": "Speed",
   "This image is sourced from a container registry ({{url}}). Click to select it, then use \"Prepare image\" to cache it for bare metal deployment.": "This image is sourced from a container registry ({{url}}). Click to select it, then use \"Prepare image\" to cache it for bare metal deployment.",
   "Discovered": "Discovered",
-  "Serial number hint for the root disk. Falls back to minimum size if unavailable.": "Serial number hint for the root disk. Falls back to minimum size if unavailable."
+  "Serial number hint for the root disk. Falls back to minimum size if unavailable.": "Serial number hint for the root disk. Falls back to minimum size if unavailable.",
+  "Where the BareMetalHost will be registered. Discovery needs permission to create BareMetalHosts there.": "Where the BareMetalHost will be registered. Discovery needs permission to create BareMetalHosts there."
 }

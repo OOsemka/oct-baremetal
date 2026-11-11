@@ -85,6 +85,9 @@ func main() {
 		HealthAddr: "-", // /healthz is on the image port
 		Handler:    authz.Handler(),
 		Logger:     logger,
+		// Discovery makes several Redfish calls with 30 s timeouts each against a BMC
+		// that may be slow; the kit's 120 s default could cut it off.
+		WriteTimeout: 10 * time.Minute,
 	}); err != nil {
 		log.Fatalf("API server: %v", err)
 	}
