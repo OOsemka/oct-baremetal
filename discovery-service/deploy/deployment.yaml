@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: discovery-service
-          image: quay.io/cjanisze/oct-baremetal-discovery:1.1.0-ocp4.22
+          image: quay.io/openshift-community-tools/oct-baremetal-discovery:1.1.1-ocp4.22
           env:
             # backend-security-kit: existing extensions start in audit (requests allowed,
             # would-be denials logged); a cluster admin enables enforce in the cluster policy

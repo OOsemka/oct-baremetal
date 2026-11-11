@@ -9,7 +9,7 @@ This repository is the **Bare Metal Hosts** ConsolePlugin: inventory, register, 
 | | Value |
 | --- | --- |
 | Plugin ID / ConsolePlugin / `package.json` `consolePlugin.name` | **`oct-baremetal`** |
-| Image | `quay.io/<org>/oct-baremetal:0.1.1-ocp4.22` (`<semver>-ocp<major.minor>`; optional aliases `:0.1.1` / `:4.22`) |
+| Image | `quay.io/<org>/oct-baremetal:0.1.2-ocp4.22` (`<semver>-ocp<major.minor>`; optional aliases `:0.1.2` / `:4.22`) |
 | i18n | `plugin__oct-baremetal` |
 | Proxy | `/api/proxy/plugin/oct-baremetal/discovery-service` |
 
@@ -19,7 +19,7 @@ This repository is the **Bare Metal Hosts** ConsolePlugin: inventory, register, 
 
 Display name is **Bare Metal Hosts**.
 
-**Current version:** `0.1.1` (package.json / consolePlugin.version).
+**Current version:** `0.1.2` (package.json / consolePlugin.version).
 
 ## Architecture (short)
 
@@ -57,10 +57,10 @@ No StorageClass logic in the frontend. Discovery-service reads the `image-cache`
 
 ## OpenShift and extension versions
 
-Two axes in the catalog: git tag **`v1.x.x`** (semver) and optional branch **`ocp-X.Y`** when PatternFly or APIs diverge. Image tags **always** `<semver>-ocp<major.minor>` (e.g. `0.1.1-ocp4.22`). Storefront Add installs the newest stable semver compatible with the cluster; Update is explicit; one ConsolePlugin name runs one version.
+Two axes in the catalog: git tag **`v1.x.x`** (semver) and optional branch **`ocp-X.Y`** when PatternFly or APIs diverge. Image tags **always** `<semver>-ocp<major.minor>` (e.g. `0.1.2-ocp4.22`). Storefront Add installs the newest stable semver compatible with the cluster; Update is explicit; one ConsolePlugin name runs one version.
 
 - Git: `main` tracks the newest supported minor (currently **4.22**). Optional `ocp-4.22`, `ocp-4.21`.
-- Images: `oct-baremetal:0.1.1-ocp4.22` and `:0.1.1-ocp4.21`; discovery `oct-baremetal-discovery` with the same pair. **Always publish both** OpenShift minor tags (same digest if bits match). Never catalog `:0.1.1` unless that combined tag exists and is public.
+- Images: `oct-baremetal:0.1.2-ocp4.22` and `:0.1.2-ocp4.21`; discovery `oct-baremetal-discovery` with the same pair. **Always publish both** OpenShift minor tags (same digest if bits match). Never catalog `:0.1.2` unless that combined tag exists and is public.
 - PatternFly 6 on 4.22; do not mix PF majors on one branch.
 
 ## Navigation (React Router v6 via v5-compat)
@@ -96,9 +96,9 @@ The deploy bundle (`catalog/deploy/oct-baremetal.yaml` in the storefront) refere
 
 | Image | Current version | Quay repo |
 | --- | --- | --- |
-| `oct-baremetal-discovery` | **1.1.0** | `quay.io/cjanisze/oct-baremetal-discovery` |
+| `oct-baremetal-discovery` | **1.1.1** | `quay.io/openshift-community-tools/oct-baremetal-discovery` |
 
-The discovery-service version (`1.1.0`) is independent of the plugin version (`0.1.1`). Both are listed in the deploy bundle. After rebuilding either image, update the deploy YAML in the storefront, rebuild the storefront image, and run `scripts/validate-catalog.sh`. See `oct-release-checklist.mdc`.
+The discovery-service version (`1.1.0`) is independent of the plugin version (`0.1.2`). Both are listed in the deploy bundle. After rebuilding either image, update the deploy YAML in the storefront, rebuild the storefront image, and run `scripts/validate-catalog.sh`. See `oct-release-checklist.mdc`.
 
 ## Do-not-break list
 
@@ -114,7 +114,7 @@ Storefront `catalog/community.yaml`: `metadata.name: oct-baremetal`, `consolePlu
 
 ## Add must go Ready
 
-Storefront **Add** can succeed (Namespace, ConsolePlugin, `spec.plugins`) while the plugin never becomes Ready. **Open** then 404s (no bundle; typical ImagePullBackOff / unpublished catalog tag). Follow **oct-storefront** `docs/extension-standard.md`: publish the **combined** tag the catalog lists (`:0.1.1-ocp4.22`, not only `:4.22` or `:0.1.1`); keep images public (no pull secret); include every required PVC/volume/RBAC/Service in the storefront bundle Add applies. This plugin **must** precreate PVC `image-cache` (100Gi) so `discovery-service` can schedule. Omit `storageClassName` for the cluster default; Add can pick a StorageClass (`communitytools.io/storage-class` or `spec.storageClassName`). Confirm the plugin **and** discovery-service Deployments are Running and `image-cache` is Bound before calling Add done.
+Storefront **Add** can succeed (Namespace, ConsolePlugin, `spec.plugins`) while the plugin never becomes Ready. **Open** then 404s (no bundle; typical ImagePullBackOff / unpublished catalog tag). Follow **oct-storefront** `docs/extension-standard.md`: publish the **combined** tag the catalog lists (`:0.1.2-ocp4.22`, not only `:4.22` or `:0.1.2`); keep images public (no pull secret); include every required PVC/volume/RBAC/Service in the storefront bundle Add applies. This plugin **must** precreate PVC `image-cache` (100Gi) so `discovery-service` can schedule. Omit `storageClassName` for the cluster default; Add can pick a StorageClass (`communitytools.io/storage-class` or `spec.storageClassName`). Confirm the plugin **and** discovery-service Deployments are Running and `image-cache` is Bound before calling Add done.
 
 Storefront **Add** also checks Metal3 `Provisioning/provisioning-configuration` `spec.watchAllNamespaces` and can patch `true` with the user’s console credentials. Inventory shows a warning if that field is missing/false and any host is outside `openshift-machine-api` (BareMetal Operator then only reconciles `openshift-machine-api`, so those hosts stay Unknown).
 

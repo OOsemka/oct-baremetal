@@ -5,8 +5,8 @@
 Standalone OpenShift Console plugin for Metal3 BareMetalHost inventory, BMC Redfish register, and golden-image deploy.
 
 - **Plugin ID:** `oct-baremetal`
-- **Version:** `0.1.1`
-- **Image:** `quay.io/<org>/oct-baremetal:0.1.1-ocp4.22` and `:0.1.1-ocp4.21` (`<semver>-ocp<major.minor>`; always publish both minors; aliases `:0.1.1` / `:4.22` may still exist)
+- **Version:** `0.1.2`
+- **Image:** `quay.io/<org>/oct-baremetal:0.1.2-ocp4.22` and `:0.1.2-ocp4.21` (`<semver>-ocp<major.minor>`; always publish both minors; aliases `:0.1.2` / `:4.22` may still exist)
 - **Git branch:** `main` / `ocp-4.22` (one `ocp-X.Y` branch per OpenShift minor)
 
 This folder may still be named `openshift-baremetal-dashboard`. The plugin ID is `oct-baremetal`. Existing clusters that installed `openshift-baremetal-dashboard` need a **reinstall**. This is **not** the Community Tools catalog; hubs live in [oct-storefront](../oct-storefront). Network Bond is [oct-network-bond](../oct-network-bond).
