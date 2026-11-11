@@ -5,7 +5,7 @@ package main
 // (image-cache PVC) or a CSI driver match from the live cluster.
 
 import (
-	"github.com/OOsemka/oct-storefront/backend-security-kit/validate"
+	"github.com/openshift-community-tools/oct-storefront/backend-security-kit/validate"
 
 	"crypto/sha256"
 	"crypto/tls"
