@@ -47,7 +47,7 @@ oc set image deploy/oct-baremetal -n oct-baremetal plugin=quay.io/<you>/oct-bare
 
 ```bash
 for f in namespace rbac service deployment consoleplugin; do
-  sed 's|quay.io/cjanisze/oct-baremetal:[^ ]*|quay.io/<you>/oct-baremetal:dev|' deploy/$f.yaml | oc apply -f -
+  sed 's|quay.io/openshift-community-tools/oct-baremetal:[^ ]*|quay.io/<you>/oct-baremetal:dev|' deploy/$f.yaml | oc apply -f -
 done
 ```
 

@@ -96,7 +96,7 @@ The deploy bundle (`catalog/deploy/oct-baremetal.yaml` in the storefront) refere
 
 | Image | Current version | Quay repo |
 | --- | --- | --- |
-| `oct-baremetal-discovery` | **1.1.1** | `quay.io/cjanisze/oct-baremetal-discovery` |
+| `oct-baremetal-discovery` | **1.1.1** | `quay.io/openshift-community-tools/oct-baremetal-discovery` |
 
 The discovery-service version (`1.1.0`) is independent of the plugin version (`0.1.2`). Both are listed in the deploy bundle. After rebuilding either image, update the deploy YAML in the storefront, rebuild the storefront image, and run `scripts/validate-catalog.sh`. See `oct-release-checklist.mdc`.
 
