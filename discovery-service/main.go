@@ -14,6 +14,7 @@ func main() {
 	httpsPort := flag.String("https-port", "8443", "HTTPS port for TLS serving")
 	tlsCert := flag.String("tls-cert", "/var/run/secrets/tls/tls.crt", "Path to TLS certificate")
 	tlsKey := flag.String("tls-key", "/var/run/secrets/tls/tls.key", "Path to TLS key")
+	httpAPI := flag.Bool("http-api", false, "Also serve the API on the HTTP port (local development only; never in a cluster)")
 	flag.Parse()
 
 	mux := http.NewServeMux()
@@ -22,11 +23,12 @@ func main() {
 	mux.HandleFunc("POST /api/v1/log", handleLog)
 
 	// Image cache: PVC-backed HTTP server for bridging PVC images → Metal3
+	var cache *ImageCacheManager
 	k8sClient, k8sErr := NewK8sClient()
 	if k8sErr != nil {
 		log.Printf("[IMAGE-CACHE] K8s client unavailable (not in-cluster?): %v — image cache disabled", k8sErr)
 	} else {
-		cache := NewImageCacheManager(k8sClient)
+		cache = NewImageCacheManager(k8sClient)
 		mux.HandleFunc("POST /api/v1/image-cache/prepare", cache.handlePrepare)
 		mux.HandleFunc("GET /api/v1/image-cache/status/{name}", cache.handleStatus)
 		mux.HandleFunc("GET /api/v1/image-cache/list", cache.handleList)
@@ -36,6 +38,11 @@ func main() {
 	}
 
 	handler := withCORS(mux)
+	httpHandler := newImageMux(cache)
+	if *httpAPI {
+		log.Println("--http-api: serving the API on the HTTP port too (local development only)")
+		httpHandler = handler
+	}
 
 	// WriteTimeout is large because Metal3/Ironic downloads multi-GB images
 	// through this server.
@@ -44,7 +51,7 @@ func main() {
 		log.Printf("Starting HTTP server on %s", addr)
 		srv := &http.Server{
 			Addr:         addr,
-			Handler:      handler,
+			Handler:      httpHandler,
 			ReadTimeout:  10 * time.Second,
 			WriteTimeout: 30 * time.Minute,
 			IdleTimeout:  120 * time.Second,
@@ -90,4 +97,16 @@ func withCORS(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// newImageMux serves the HTTP port, which the image-cache Route publishes for
+// Ironic: image files and health checks only. The API is served on the HTTPS
+// port, which the console reaches through the ConsolePlugin proxy.
+func newImageMux(cache *ImageCacheManager) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", handleHealthz)
+	if cache != nil {
+		mux.HandleFunc("GET /api/v1/image-cache/images/{filename}", cache.handleServeFile)
+	}
+	return mux
 }
