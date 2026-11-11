@@ -51,8 +51,8 @@ cd discovery-service
 # Build
 go build -o discovery-service .
 
-# Run (HTTP only, no TLS certs needed)
-./discovery-service
+# Run (HTTP only, no TLS certs needed; --http-api serves the API on HTTP for local testing)
+./discovery-service --http-api
 # Listening on :8080
 
 # Test
@@ -81,7 +81,7 @@ oc apply -f deploy/route.yaml
 oc apply -f deploy/deployment.yaml
 ```
 
-The service annotation `service.beta.openshift.io/serving-cert-secret-name` tells OpenShift's service-ca to generate a TLS certificate and mount it into the pod. The service listens on HTTPS (8443) in-cluster and HTTP (8080) for health probes.
+The service annotation `service.beta.openshift.io/serving-cert-secret-name` tells OpenShift's service-ca to generate a TLS certificate and mount it into the pod. The service listens on HTTPS (8443) for the API (through the console proxy) and on HTTP (8080) for image downloads and health probes only.
 
 Never hardcode a lab StorageClass, VLAN, hostname, or similar in this service. The image-cache PVC class comes from Add / the cluster default; temp snapshot PVCs follow that class when the CSI driver matches.
 
@@ -92,6 +92,7 @@ Never hardcode a lab StorageClass, VLAN, hostname, or similar in this service. T
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--http-port` | `8080` | HTTP listen port |
+| `--http-api` | `false` | Also serve the API on the HTTP port. For local development only: in a cluster the HTTP port (published by the image-cache Route) serves only image files and `/healthz`. |
 | `--https-port` | `8443` | HTTPS listen port |
 | `--tls-cert` | `/var/run/secrets/tls/tls.crt` | TLS certificate path |
 | `--tls-key` | `/var/run/secrets/tls/tls.key` | TLS key path |
